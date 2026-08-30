@@ -1,0 +1,813 @@
+import React, { useState, useMemo, useRef } from "react";
+import { Upload, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, PiggyBank, Receipt, Calendar, Sparkles, Loader2, X, Plus, Trash2, FileJson } from "lucide-react";
+
+/* Case data below is the official P12 public set, normalised from the
+   published schema (amount strings -> numbers). The loader further down
+   accepts the raw schema file directly, so a different case file can be
+   dropped in without touching this array. */
+const CASES = [{"id":"PUB-01","today":"2026-04-17","monthLast":"2026-03","monthThis":"2026-04","salary":50000,"expenses":[{"id":"E001","date":"2026-03-02","category":"Groceries","shop":"Meena Bazar","amount":2475},{"id":"E002","date":"2026-03-04","category":"Rent","shop":"Landlord","amount":16000},{"id":"E003","date":"2026-03-04","category":"Utilities","shop":"DESCO","amount":856.5},{"id":"E004","date":"2026-03-05","category":"Education","shop":"Udemy","amount":1329},{"id":"E005","date":"2026-03-05","category":"Food","shop":"Madchef","amount":304},{"id":"E006","date":"2026-03-06","category":"Education","shop":"Udemy","amount":719},{"id":"E007","date":"2026-03-06","category":"Transport","shop":"Uber","amount":421},{"id":"E008","date":"2026-03-07","category":"Education","shop":"Bookworm","amount":501},{"id":"E009","date":"2026-03-07","category":"Food","shop":"Panda Garden","amount":505},{"id":"E010","date":"2026-03-07","category":"Food","shop":"Panda Garden","amount":585},{"id":"E011","date":"2026-03-08","category":"Health","shop":"Lazz Pharma","amount":1477},{"id":"E012","date":"2026-03-11","category":"Mobile","shop":"GP recharge","amount":422},{"id":"E013","date":"2026-03-12","category":"Health","shop":"Lazz Pharma","amount":710.5},{"id":"E014","date":"2026-03-16","category":"Education","shop":"Udemy","amount":2563},{"id":"E015","date":"2026-03-16","category":"Food","shop":"Panda Garden","amount":348},{"id":"E016","date":"2026-03-17","category":"Entertainment","shop":"Netflix","amount":882.5},{"id":"E017","date":"2026-03-17","category":"Health","shop":"Popular Diagnostic","amount":2474},{"id":"E018","date":"2026-03-18","category":"Transport","shop":"Pathao","amount":415},{"id":"E019","date":"2026-03-20","category":"Entertainment","shop":"Steam","amount":1132},{"id":"E020","date":"2026-03-23","category":"Education","shop":"Bookworm","amount":1742},{"id":"E021","date":"2026-03-28","category":"Groceries","shop":"Shwapno","amount":497},{"id":"E022","date":"2026-03-28","category":"Groceries","shop":"Unimart","amount":3153},{"id":"E023","date":"2026-03-29","category":"Groceries","shop":"Meena Bazar","amount":1398},{"id":"E024","date":"2026-03-29","category":"Mobile","shop":"Robi recharge","amount":667},{"id":"E025","date":"2026-03-30","category":"Groceries","shop":"Agora","amount":736.5},{"id":"E026","date":"2026-03-31","category":"Education","shop":"Udemy","amount":1223},{"id":"E027","date":"2026-04-03","category":"Rent","shop":"Landlord","amount":16000},{"id":"E028","date":"2026-04-04","category":"Food","shop":"Sultans Dine","amount":364},{"id":"E029","date":"2026-04-06","category":"Food","shop":"Panda Garden","amount":492},{"id":"E030","date":"2026-04-07","category":"Mobile","shop":"GP recharge","amount":535.5},{"id":"E031","date":"2026-04-07","category":"Utilities","shop":"DESCO","amount":2599.5},{"id":"E032","date":"2026-04-08","category":"Mobile","shop":"bKash","amount":679},{"id":"E033","date":"2026-04-11","category":"Groceries","shop":"Unimart","amount":546.5},{"id":"E034","date":"2026-04-11","category":"Mobile","shop":"Robi recharge","amount":691},{"id":"E035","date":"2026-04-12","category":"Transport","shop":"BRTC bus","amount":461},{"id":"E036","date":"2026-04-13","category":"Entertainment","shop":"Star Cineplex","amount":1326},{"id":"E037","date":"2026-04-13","category":"Entertainment","shop":"Star Cineplex","amount":738},{"id":"E038","date":"2026-04-15","category":"Mobile","shop":"GP recharge","amount":919.5},{"id":"E039","date":"2026-04-15","category":"Mobile","shop":"bKash","amount":764},{"id":"E040","date":"2026-04-15","category":"Transport","shop":"CNG","amount":232},{"id":"E041","date":"2026-04-17","category":"Food","shop":"Madchef","amount":735}],"pockets":[{"id":"SP-1","name":"Wedding","item":"reception hall booking","target":300000,"contribution":20000},{"id":"SP-2","name":"Laptop","item":"MacBook Air M4","target":145000,"contribution":12000},{"id":"SP-3","name":"Bike","item":"Honda Livo","target":150000,"contribution":9000}],"dpsRate":8},{"id":"PUB-02","today":"2026-09-18","monthLast":"2026-08","monthThis":"2026-09","salary":80000,"expenses":[{"id":"E001","date":"2026-08-01","category":"Rent","shop":"Landlord","amount":12000},{"id":"E002","date":"2026-08-02","category":"Health","shop":"Lazz Pharma","amount":1149},{"id":"E003","date":"2026-08-04","category":"Health","shop":"Popular Diagnostic","amount":2181},{"id":"E004","date":"2026-08-04","category":"Transport","shop":"CNG","amount":399.5},{"id":"E005","date":"2026-08-06","category":"Education","shop":"Udemy","amount":1650},{"id":"E006","date":"2026-08-07","category":"Entertainment","shop":"Steam","amount":453},{"id":"E007","date":"2026-08-09","category":"Education","shop":"Udemy","amount":2786},{"id":"E008","date":"2026-08-11","category":"Transport","shop":"Uber","amount":253},{"id":"E009","date":"2026-08-12","category":"Education","shop":"Udemy","amount":601},{"id":"E010","date":"2026-08-12","category":"Health","shop":"Lazz Pharma","amount":2332},{"id":"E011","date":"2026-08-12","category":"Mobile","shop":"Robi recharge","amount":299},{"id":"E012","date":"2026-08-13","category":"Groceries","shop":"Agora","amount":3339},{"id":"E013","date":"2026-08-14","category":"Health","shop":"Lazz Pharma","amount":2257},{"id":"E014","date":"2026-08-14","category":"Transport","shop":"Uber","amount":492},{"id":"E015","date":"2026-08-15","category":"Groceries","shop":"Meena Bazar","amount":1022},{"id":"E016","date":"2026-08-15","category":"Mobile","shop":"Robi recharge","amount":988},{"id":"E017","date":"2026-08-18","category":"Food","shop":"Sultans Dine","amount":307},{"id":"E018","date":"2026-08-19","category":"Education","shop":"Bookworm","amount":891},{"id":"E019","date":"2026-08-22","category":"Entertainment","shop":"Star Cineplex","amount":820.5},{"id":"E020","date":"2026-08-23","category":"Health","shop":"Lazz Pharma","amount":2095},{"id":"E021","date":"2026-08-23","category":"Transport","shop":"Pathao","amount":77},{"id":"E022","date":"2026-08-26","category":"Education","shop":"Udemy","amount":2542},{"id":"E023","date":"2026-08-26","category":"Entertainment","shop":"Star Cineplex","amount":213},{"id":"E024","date":"2026-08-26","category":"Health","shop":"Popular Diagnostic","amount":346},{"id":"E025","date":"2026-08-27","category":"Education","shop":"Bookworm","amount":2093},{"id":"E026","date":"2026-08-27","category":"Entertainment","shop":"Steam","amount":385},{"id":"E027","date":"2026-08-27","category":"Utilities","shop":"DESCO","amount":2912.5},{"id":"E028","date":"2026-08-28","category":"Entertainment","shop":"Steam","amount":1322},{"id":"E029","date":"2026-08-28","category":"Health","shop":"Popular Diagnostic","amount":835.5},{"id":"E030","date":"2026-08-29","category":"Education","shop":"Bookworm","amount":826.5},{"id":"E031","date":"2026-08-30","category":"Entertainment","shop":"Netflix","amount":767},{"id":"E032","date":"2026-08-30","category":"Transport","shop":"Uber","amount":245.5},{"id":"E033","date":"2026-09-01","category":"Food","shop":"Star Kabab","amount":213.5},{"id":"E034","date":"2026-09-03","category":"Food","shop":"Sultans Dine","amount":679},{"id":"E035","date":"2026-09-03","category":"Health","shop":"Lazz Pharma","amount":924.5},{"id":"E036","date":"2026-09-04","category":"Rent","shop":"Landlord","amount":12000},{"id":"E037","date":"2026-09-05","category":"Clothing","shop":"Yellow","amount":3256},{"id":"E038","date":"2026-09-05","category":"Food","shop":"Madchef","amount":272},{"id":"E039","date":"2026-09-06","category":"Transport","shop":"CNG","amount":341},{"id":"E040","date":"2026-09-07","category":"Groceries","shop":"Meena Bazar","amount":1506},{"id":"E041","date":"2026-09-07","category":"Health","shop":"Popular Diagnostic","amount":2224},{"id":"E042","date":"2026-09-08","category":"Groceries","shop":"Agora","amount":1156},{"id":"E043","date":"2026-09-12","category":"Clothing","shop":"Yellow","amount":1181},{"id":"E044","date":"2026-09-12","category":"Education","shop":"Udemy","amount":1802},{"id":"E045","date":"2026-09-13","category":"Education","shop":"Bookworm","amount":1001},{"id":"E046","date":"2026-09-13","category":"Mobile","shop":"Robi recharge","amount":949},{"id":"E047","date":"2026-09-13","category":"Utilities","shop":"Dhaka WASA","amount":1401},{"id":"E048","date":"2026-09-14","category":"Mobile","shop":"bKash","amount":826.5},{"id":"E049","date":"2026-09-16","category":"Education","shop":"Udemy","amount":2359},{"id":"E050","date":"2026-09-16","category":"Education","shop":"Udemy","amount":505},{"id":"E051","date":"2026-09-18","category":"Education","shop":"Bookworm","amount":2830},{"id":"E052","date":"2026-09-18","category":"Health","shop":"Popular Diagnostic","amount":1296}],"pockets":[{"id":"SP-1","name":"Phone","item":"Pixel 9a","target":65000,"contribution":6000},{"id":"SP-2","name":"Wedding","item":"reception hall booking","target":300000,"contribution":20000},{"id":"SP-3","name":"Bike","item":"Honda Livo","target":150000,"contribution":9000}],"dpsRate":7.5},{"id":"PUB-03","today":"2026-08-18","monthLast":"2026-07","monthThis":"2026-08","salary":75000,"expenses":[{"id":"E001","date":"2026-07-01","category":"Rent","shop":"Landlord","amount":22000},{"id":"E002","date":"2026-07-01","category":"Utilities","shop":"Dhaka WASA","amount":2113},{"id":"E003","date":"2026-07-05","category":"Entertainment","shop":"Steam","amount":1114},{"id":"E004","date":"2026-07-07","category":"Clothing","shop":"Aarong","amount":1990},{"id":"E005","date":"2026-07-07","category":"Education","shop":"Bookworm","amount":2736},{"id":"E006","date":"2026-07-11","category":"Clothing","shop":"Cats Eye","amount":1257},{"id":"E007","date":"2026-07-11","category":"Clothing","shop":"Cats Eye","amount":1331},{"id":"E008","date":"2026-07-12","category":"Entertainment","shop":"Steam","amount":726},{"id":"E009","date":"2026-07-13","category":"Food","shop":"Chillox","amount":843},{"id":"E010","date":"2026-07-14","category":"Groceries","shop":"Meena Bazar","amount":1923},{"id":"E011","date":"2026-07-14","category":"Transport","shop":"Pathao","amount":256},{"id":"E012","date":"2026-07-17","category":"Education","shop":"Udemy","amount":2100},{"id":"E013","date":"2026-07-18","category":"Education","shop":"Udemy","amount":1557},{"id":"E014","date":"2026-07-18","category":"Entertainment","shop":"Star Cineplex","amount":365.5},{"id":"E015","date":"2026-07-18","category":"Food","shop":"Chillox","amount":816.5},{"id":"E016","date":"2026-07-18","category":"Utilities","shop":"Titas Gas","amount":1262},{"id":"E017","date":"2026-07-20","category":"Clothing","shop":"Yellow","amount":933},{"id":"E018","date":"2026-07-20","category":"Groceries","shop":"Unimart","amount":1456.5},{"id":"E019","date":"2026-07-21","category":"Transport","shop":"CNG","amount":290},{"id":"E020","date":"2026-07-23","category":"Transport","shop":"Pathao","amount":115},{"id":"E021","date":"2026-07-24","category":"Utilities","shop":"DESCO","amount":2236},{"id":"E022","date":"2026-07-25","category":"Groceries","shop":"Agora","amount":2885},{"id":"E023","date":"2026-07-25","category":"Groceries","shop":"Unimart","amount":2060},{"id":"E024","date":"2026-07-25","category":"Mobile","shop":"GP recharge","amount":159},{"id":"E025","date":"2026-07-26","category":"Groceries","shop":"Agora","amount":1133},{"id":"E026","date":"2026-07-26","category":"Health","shop":"Lazz Pharma","amount":2034.5},{"id":"E027","date":"2026-07-27","category":"Clothing","shop":"Yellow","amount":1023.5},{"id":"E028","date":"2026-07-28","category":"Health","shop":"Popular Diagnostic","amount":1339},{"id":"E029","date":"2026-07-28","category":"Transport","shop":"BRTC bus","amount":536},{"id":"E030","date":"2026-07-30","category":"Clothing","shop":"Cats Eye","amount":2911},{"id":"E031","date":"2026-08-01","category":"Entertainment","shop":"Steam","amount":692},{"id":"E032","date":"2026-08-01","category":"Rent","shop":"Landlord","amount":22000},{"id":"E033","date":"2026-08-04","category":"Groceries","shop":"Agora","amount":2229},{"id":"E034","date":"2026-08-05","category":"Utilities","shop":"Dhaka WASA","amount":1237},{"id":"E035","date":"2026-08-06","category":"Utilities","shop":"Titas Gas","amount":2048},{"id":"E036","date":"2026-08-07","category":"Entertainment","shop":"Netflix","amount":1069},{"id":"E037","date":"2026-08-07","category":"Food","shop":"Madchef","amount":418},{"id":"E038","date":"2026-08-07","category":"Utilities","shop":"Dhaka WASA","amount":1197},{"id":"E039","date":"2026-08-07","category":"Utilities","shop":"Titas Gas","amount":1828},{"id":"E040","date":"2026-08-09","category":"Education","shop":"Bookworm","amount":2302},{"id":"E041","date":"2026-08-11","category":"Food","shop":"Panda Garden","amount":899},{"id":"E042","date":"2026-08-11","category":"Health","shop":"Popular Diagnostic","amount":296},{"id":"E043","date":"2026-08-12","category":"Health","shop":"Popular Diagnostic","amount":1740},{"id":"E044","date":"2026-08-13","category":"Mobile","shop":"bKash","amount":915},{"id":"E045","date":"2026-08-14","category":"Education","shop":"Udemy","amount":2352},{"id":"E046","date":"2026-08-16","category":"Mobile","shop":"Robi recharge","amount":762},{"id":"E047","date":"2026-08-17","category":"Health","shop":"Popular Diagnostic","amount":2129.5},{"id":"E048","date":"2026-08-18","category":"Entertainment","shop":"Star Cineplex","amount":1046}],"pockets":[{"id":"SP-1","name":"Trip","item":"Cox's Bazar family trip","target":45000,"contribution":5000},{"id":"SP-2","name":"Bike","item":"Honda Livo","target":150000,"contribution":9000},{"id":"SP-3","name":"Laptop","item":"MacBook Air M4","target":145000,"contribution":12000}],"dpsRate":10},{"id":"PUB-04","today":"2026-04-17","monthLast":"2026-03","monthThis":"2026-04","salary":110000,"expenses":[{"id":"E001","date":"2026-03-01","category":"Food","shop":"Star Kabab","amount":860},{"id":"E002","date":"2026-03-01","category":"Rent","shop":"Landlord","amount":22000},{"id":"E003","date":"2026-03-01","category":"Transport","shop":"Pathao","amount":420},{"id":"E004","date":"2026-03-02","category":"Entertainment","shop":"Netflix","amount":973},{"id":"E005","date":"2026-03-02","category":"Transport","shop":"Pathao","amount":350.5},{"id":"E006","date":"2026-03-03","category":"Clothing","shop":"Aarong","amount":1639},{"id":"E007","date":"2026-03-03","category":"Transport","shop":"Uber","amount":423.5},{"id":"E008","date":"2026-03-06","category":"Health","shop":"Lazz Pharma","amount":1403},{"id":"E009","date":"2026-03-06","category":"Mobile","shop":"bKash","amount":634},{"id":"E010","date":"2026-03-06","category":"Utilities","shop":"Dhaka WASA","amount":1278.5},{"id":"E011","date":"2026-03-07","category":"Food","shop":"Madchef","amount":589},{"id":"E012","date":"2026-03-07","category":"Transport","shop":"BRTC bus","amount":121},{"id":"E013","date":"2026-03-07","category":"Transport","shop":"Pathao","amount":191},{"id":"E014","date":"2026-03-10","category":"Transport","shop":"BRTC bus","amount":562},{"id":"E015","date":"2026-03-13","category":"Clothing","shop":"Yellow","amount":3613},{"id":"E016","date":"2026-03-13","category":"Utilities","shop":"Titas Gas","amount":2739},{"id":"E017","date":"2026-03-15","category":"Entertainment","shop":"Star Cineplex","amount":202},{"id":"E018","date":"2026-03-17","category":"Transport","shop":"Pathao","amount":97},{"id":"E019","date":"2026-03-19","category":"Health","shop":"Lazz Pharma","amount":1071.5},{"id":"E020","date":"2026-03-21","category":"Food","shop":"Madchef","amount":597},{"id":"E021","date":"2026-03-22","category":"Transport","shop":"Uber","amount":160},{"id":"E022","date":"2026-03-24","category":"Food","shop":"Madchef","amount":844.5},{"id":"E023","date":"2026-03-24","category":"Transport","shop":"BRTC bus","amount":397},{"id":"E024","date":"2026-03-26","category":"Education","shop":"Udemy","amount":654},{"id":"E025","date":"2026-03-27","category":"Health","shop":"Lazz Pharma","amount":2062},{"id":"E026","date":"2026-03-28","category":"Entertainment","shop":"Star Cineplex","amount":1485},{"id":"E027","date":"2026-03-28","category":"Mobile","shop":"GP recharge","amount":147},{"id":"E028","date":"2026-03-29","category":"Clothing","shop":"Aarong","amount":1011},{"id":"E029","date":"2026-04-01","category":"Mobile","shop":"Robi recharge","amount":499.5},{"id":"E030","date":"2026-04-01","category":"Utilities","shop":"DESCO","amount":864},{"id":"E031","date":"2026-04-02","category":"Education","shop":"Bookworm","amount":1914},{"id":"E032","date":"2026-04-03","category":"Rent","shop":"Landlord","amount":22000},{"id":"E033","date":"2026-04-05","category":"Utilities","shop":"Dhaka WASA","amount":2900},{"id":"E034","date":"2026-04-08","category":"Entertainment","shop":"Steam","amount":983.5},{"id":"E035","date":"2026-04-11","category":"Health","shop":"Lazz Pharma","amount":2369.5},{"id":"E036","date":"2026-04-14","category":"Education","shop":"Udemy","amount":2001},{"id":"E037","date":"2026-04-14","category":"Groceries","shop":"Meena Bazar","amount":1720.5},{"id":"E038","date":"2026-04-15","category":"Mobile","shop":"bKash","amount":304},{"id":"E039","date":"2026-04-15","category":"Transport","shop":"Uber","amount":302.5},{"id":"E040","date":"2026-04-16","category":"Utilities","shop":"DESCO","amount":1956},{"id":"E041","date":"2026-04-17","category":"Health","shop":"Lazz Pharma","amount":509},{"id":"E042","date":"2026-04-17","category":"Health","shop":"Popular Diagnostic","amount":538},{"id":"E043","date":"2026-04-17","category":"Health","shop":"Popular Diagnostic","amount":545},{"id":"E044","date":"2026-04-17","category":"Transport","shop":"BRTC bus","amount":297}],"pockets":[{"id":"SP-1","name":"Phone","item":"Pixel 9a","target":65000,"contribution":6000},{"id":"SP-2","name":"Trip","item":"Cox's Bazar family trip","target":45000,"contribution":5000},{"id":"SP-3","name":"Bike","item":"Honda Livo","target":150000,"contribution":9000}],"dpsRate":7.5},{"id":"PUB-05","today":"2026-06-23","monthLast":"2026-05","monthThis":"2026-06","salary":85000,"expenses":[{"id":"E001","date":"2026-05-01","category":"Health","shop":"Lazz Pharma","amount":712.5},{"id":"E002","date":"2026-05-03","category":"Rent","shop":"Landlord","amount":14000},{"id":"E003","date":"2026-05-05","category":"Food","shop":"Sultans Dine","amount":128},{"id":"E004","date":"2026-05-05","category":"Transport","shop":"CNG","amount":166},{"id":"E005","date":"2026-05-07","category":"Clothing","shop":"Yellow","amount":3528.5},{"id":"E006","date":"2026-05-08","category":"Food","shop":"Star Kabab","amount":799},{"id":"E007","date":"2026-05-08","category":"Health","shop":"Lazz Pharma","amount":429},{"id":"E008","date":"2026-05-10","category":"Entertainment","shop":"Star Cineplex","amount":602},{"id":"E009","date":"2026-05-10","category":"Entertainment","shop":"Star Cineplex","amount":744},{"id":"E010","date":"2026-05-10","category":"Food","shop":"Panda Garden","amount":417},{"id":"E011","date":"2026-05-10","category":"Groceries","shop":"Agora","amount":2110.5},{"id":"E012","date":"2026-05-14","category":"Clothing","shop":"Cats Eye","amount":3764},{"id":"E013","date":"2026-05-14","category":"Food","shop":"Chillox","amount":250},{"id":"E014","date":"2026-05-15","category":"Groceries","shop":"Shwapno","amount":2108},{"id":"E015","date":"2026-05-15","category":"Mobile","shop":"Robi recharge","amount":598.5},{"id":"E016","date":"2026-05-15","category":"Utilities","shop":"DESCO","amount":1808.5},{"id":"E017","date":"2026-05-16","category":"Utilities","shop":"Dhaka WASA","amount":2913},{"id":"E018","date":"2026-05-17","category":"Health","shop":"Lazz Pharma","amount":1509.5},{"id":"E019","date":"2026-05-18","category":"Education","shop":"Bookworm","amount":1593},{"id":"E020","date":"2026-05-20","category":"Clothing","shop":"Aarong","amount":1188.5},{"id":"E021","date":"2026-05-20","category":"Entertainment","shop":"Netflix","amount":559},{"id":"E022","date":"2026-05-22","category":"Education","shop":"Udemy","amount":603},{"id":"E023","date":"2026-05-22","category":"Transport","shop":"BRTC bus","amount":109},{"id":"E024","date":"2026-05-23","category":"Clothing","shop":"Cats Eye","amount":2229.5},{"id":"E025","date":"2026-05-24","category":"Transport","shop":"CNG","amount":369},{"id":"E026","date":"2026-05-25","category":"Mobile","shop":"Robi recharge","amount":951},{"id":"E027","date":"2026-05-25","category":"Transport","shop":"Pathao","amount":141.5},{"id":"E028","date":"2026-05-26","category":"Clothing","shop":"Aarong","amount":3187},{"id":"E029","date":"2026-05-27","category":"Entertainment","shop":"Netflix","amount":656},{"id":"E030","date":"2026-05-29","category":"Education","shop":"Bookworm","amount":717},{"id":"E031","date":"2026-05-30","category":"Entertainment","shop":"Star Cineplex","amount":1017.5},{"id":"E032","date":"2026-05-30","category":"Mobile","shop":"bKash","amount":184},{"id":"E033","date":"2026-05-31","category":"Food","shop":"Madchef","amount":676.5},{"id":"E034","date":"2026-06-01","category":"Transport","shop":"BRTC bus","amount":546},{"id":"E035","date":"2026-06-02","category":"Mobile","shop":"GP recharge","amount":210},{"id":"E036","date":"2026-06-03","category":"Clothing","shop":"Cats Eye","amount":2338},{"id":"E037","date":"2026-06-03","category":"Food","shop":"Panda Garden","amount":550},{"id":"E038","date":"2026-06-04","category":"Clothing","shop":"Aarong","amount":1158},{"id":"E039","date":"2026-06-04","category":"Clothing","shop":"Aarong","amount":2478},{"id":"E040","date":"2026-06-04","category":"Rent","shop":"Landlord","amount":14000},{"id":"E041","date":"2026-06-04","category":"Utilities","shop":"Dhaka WASA","amount":2822},{"id":"E042","date":"2026-06-08","category":"Clothing","shop":"Yellow","amount":1508},{"id":"E043","date":"2026-06-10","category":"Food","shop":"Panda Garden","amount":650.5},{"id":"E044","date":"2026-06-10","category":"Groceries","shop":"Unimart","amount":2438},{"id":"E045","date":"2026-06-10","category":"Transport","shop":"BRTC bus","amount":493},{"id":"E046","date":"2026-06-10","category":"Transport","shop":"BRTC bus","amount":513},{"id":"E047","date":"2026-06-11","category":"Health","shop":"Popular Diagnostic","amount":1974},{"id":"E048","date":"2026-06-13","category":"Education","shop":"Udemy","amount":1789},{"id":"E049","date":"2026-06-15","category":"Health","shop":"Popular Diagnostic","amount":1957},{"id":"E050","date":"2026-06-15","category":"Mobile","shop":"bKash","amount":426},{"id":"E051","date":"2026-06-16","category":"Clothing","shop":"Cats Eye","amount":1318},{"id":"E052","date":"2026-06-16","category":"Clothing","shop":"Yellow","amount":1160.5},{"id":"E053","date":"2026-06-16","category":"Mobile","shop":"bKash","amount":233.5},{"id":"E054","date":"2026-06-17","category":"Groceries","shop":"Shwapno","amount":831},{"id":"E055","date":"2026-06-18","category":"Health","shop":"Lazz Pharma","amount":890},{"id":"E056","date":"2026-06-19","category":"Food","shop":"Chillox","amount":439.5},{"id":"E057","date":"2026-06-20","category":"Transport","shop":"Pathao","amount":95},{"id":"E058","date":"2026-06-20","category":"Utilities","shop":"Dhaka WASA","amount":916},{"id":"E059","date":"2026-06-22","category":"Clothing","shop":"Yellow","amount":3240}],"pockets":[{"id":"SP-1","name":"Flat deposit","item":"2 bed Mirpur advance","target":200000,"contribution":15000},{"id":"SP-2","name":"Bike","item":"Honda Livo","target":150000,"contribution":9000},{"id":"SP-3","name":"Phone","item":"Pixel 9a","target":65000,"contribution":6000}],"dpsRate":8},{"id":"PUB-06","today":"2026-08-14","monthLast":"2026-07","monthThis":"2026-08","salary":45000,"expenses":[{"id":"E001","date":"2026-07-01","category":"Entertainment","shop":"Star Cineplex","amount":872},{"id":"E002","date":"2026-07-01","category":"Mobile","shop":"GP recharge","amount":996},{"id":"E003","date":"2026-07-01","category":"Transport","shop":"BRTC bus","amount":492},{"id":"E004","date":"2026-07-03","category":"Clothing","shop":"Cats Eye","amount":2616},{"id":"E005","date":"2026-07-03","category":"Entertainment","shop":"Steam","amount":953},{"id":"E006","date":"2026-07-03","category":"Health","shop":"Lazz Pharma","amount":1286.5},{"id":"E007","date":"2026-07-03","category":"Rent","shop":"Landlord","amount":24000},{"id":"E008","date":"2026-07-03","category":"Transport","shop":"Pathao","amount":267},{"id":"E009","date":"2026-07-03","category":"Utilities","shop":"Titas Gas","amount":2906},{"id":"E010","date":"2026-07-05","category":"Health","shop":"Lazz Pharma","amount":381.5},{"id":"E011","date":"2026-07-09","category":"Groceries","shop":"Agora","amount":2582.5},{"id":"E012","date":"2026-07-10","category":"Health","shop":"Lazz Pharma","amount":1144},{"id":"E013","date":"2026-07-12","category":"Entertainment","shop":"Star Cineplex","amount":959},{"id":"E014","date":"2026-07-12","category":"Mobile","shop":"bKash","amount":858},{"id":"E015","date":"2026-07-14","category":"Health","shop":"Popular Diagnostic","amount":1415},{"id":"E016","date":"2026-07-14","category":"Transport","shop":"BRTC bus","amount":576.5},{"id":"E017","date":"2026-07-17","category":"Food","shop":"Chillox","amount":222},{"id":"E018","date":"2026-07-18","category":"Utilities","shop":"Titas Gas","amount":1563},{"id":"E019","date":"2026-07-19","category":"Clothing","shop":"Yellow","amount":1515},{"id":"E020","date":"2026-07-19","category":"Entertainment","shop":"Star Cineplex","amount":294},{"id":"E021","date":"2026-07-20","category":"Groceries","shop":"Agora","amount":3459},{"id":"E022","date":"2026-07-22","category":"Education","shop":"Bookworm","amount":1444},{"id":"E023","date":"2026-07-23","category":"Groceries","shop":"Shwapno","amount":2984},{"id":"E024","date":"2026-07-28","category":"Food","shop":"Star Kabab","amount":146.5},{"id":"E025","date":"2026-07-28","category":"Food","shop":"Sultans Dine","amount":764},{"id":"E026","date":"2026-07-29","category":"Entertainment","shop":"Steam","amount":439},{"id":"E027","date":"2026-07-29","category":"Food","shop":"Star Kabab","amount":667},{"id":"E028","date":"2026-07-30","category":"Mobile","shop":"GP recharge","amount":680},{"id":"E029","date":"2026-07-31","category":"Transport","shop":"CNG","amount":154.5},{"id":"E030","date":"2026-08-01","category":"Entertainment","shop":"Star Cineplex","amount":1373},{"id":"E031","date":"2026-08-02","category":"Health","shop":"Popular Diagnostic","amount":2075},{"id":"E032","date":"2026-08-02","category":"Mobile","shop":"GP recharge","amount":261},{"id":"E033","date":"2026-08-03","category":"Health","shop":"Popular Diagnostic","amount":306},{"id":"E034","date":"2026-08-03","category":"Rent","shop":"Landlord","amount":24000},{"id":"E035","date":"2026-08-04","category":"Mobile","shop":"GP recharge","amount":332},{"id":"E036","date":"2026-08-05","category":"Entertainment","shop":"Star Cineplex","amount":353},{"id":"E037","date":"2026-08-07","category":"Education","shop":"Udemy","amount":632},{"id":"E038","date":"2026-08-08","category":"Groceries","shop":"Shwapno","amount":2321},{"id":"E039","date":"2026-08-09","category":"Education","shop":"Udemy","amount":658},{"id":"E040","date":"2026-08-10","category":"Transport","shop":"Pathao","amount":470},{"id":"E041","date":"2026-08-14","category":"Clothing","shop":"Aarong","amount":1113}],"pockets":[{"id":"SP-1","name":"Trip","item":"Cox's Bazar family trip","target":45000,"contribution":5000},{"id":"SP-2","name":"Laptop","item":"MacBook Air M4","target":145000,"contribution":12000},{"id":"SP-3","name":"Wedding","item":"reception hall booking","target":300000,"contribution":20000}],"dpsRate":9},{"id":"PUB-07","today":"2026-04-17","monthLast":"2026-03","monthThis":"2026-04","salary":85000,"expenses":[{"id":"E001","date":"2026-03-01","category":"Health","shop":"Popular Diagnostic","amount":1657},{"id":"E002","date":"2026-03-02","category":"Entertainment","shop":"Star Cineplex","amount":747},{"id":"E003","date":"2026-03-04","category":"Rent","shop":"Landlord","amount":12000},{"id":"E004","date":"2026-03-05","category":"Education","shop":"Udemy","amount":2143},{"id":"E005","date":"2026-03-06","category":"Mobile","shop":"GP recharge","amount":511},{"id":"E006","date":"2026-03-07","category":"Education","shop":"Udemy","amount":2457.5},{"id":"E007","date":"2026-03-08","category":"Transport","shop":"CNG","amount":228.5},{"id":"E008","date":"2026-03-09","category":"Education","shop":"Bookworm","amount":1543},{"id":"E009","date":"2026-03-09","category":"Groceries","shop":"Agora","amount":975},{"id":"E010","date":"2026-03-09","category":"Utilities","shop":"DESCO","amount":2331},{"id":"E011","date":"2026-03-10","category":"Food","shop":"Chillox","amount":354.5},{"id":"E012","date":"2026-03-10","category":"Utilities","shop":"Titas Gas","amount":1326},{"id":"E013","date":"2026-03-11","category":"Entertainment","shop":"Netflix","amount":232},{"id":"E014","date":"2026-03-12","category":"Clothing","shop":"Aarong","amount":2511},{"id":"E015","date":"2026-03-12","category":"Entertainment","shop":"Star Cineplex","amount":477},{"id":"E016","date":"2026-03-12","category":"Mobile","shop":"GP recharge","amount":492},{"id":"E017","date":"2026-03-14","category":"Clothing","shop":"Aarong","amount":909},{"id":"E018","date":"2026-03-15","category":"Clothing","shop":"Yellow","amount":3029.5},{"id":"E019","date":"2026-03-16","category":"Groceries","shop":"Unimart","amount":978},{"id":"E020","date":"2026-03-17","category":"Education","shop":"Bookworm","amount":2944},{"id":"E021","date":"2026-03-17","category":"Groceries","shop":"Agora","amount":2761.5},{"id":"E022","date":"2026-03-18","category":"Clothing","shop":"Aarong","amount":3968},{"id":"E023","date":"2026-03-18","category":"Utilities","shop":"Titas Gas","amount":1571},{"id":"E024","date":"2026-03-20","category":"Transport","shop":"Uber","amount":250},{"id":"E025","date":"2026-03-23","category":"Mobile","shop":"GP recharge","amount":943},{"id":"E026","date":"2026-03-26","category":"Health","shop":"Lazz Pharma","amount":1391},{"id":"E027","date":"2026-03-28","category":"Clothing","shop":"Cats Eye","amount":1620},{"id":"E028","date":"2026-03-29","category":"Clothing","shop":"Yellow","amount":3155.5},{"id":"E029","date":"2026-03-30","category":"Groceries","shop":"Agora","amount":3265},{"id":"E030","date":"2026-04-01","category":"Transport","shop":"Uber","amount":112},{"id":"E031","date":"2026-04-02","category":"Entertainment","shop":"Star Cineplex","amount":1032.5},{"id":"E032","date":"2026-04-03","category":"Clothing","shop":"Yellow","amount":1305},{"id":"E033","date":"2026-04-03","category":"Rent","shop":"Landlord","amount":12000},{"id":"E034","date":"2026-04-06","category":"Groceries","shop":"Meena Bazar","amount":917.5},{"id":"E035","date":"2026-04-06","category":"Transport","shop":"Pathao","amount":359.5},{"id":"E036","date":"2026-04-07","category":"Utilities","shop":"Titas Gas","amount":1806.5},{"id":"E037","date":"2026-04-08","category":"Mobile","shop":"GP recharge","amount":343},{"id":"E038","date":"2026-04-09","category":"Mobile","shop":"GP recharge","amount":753},{"id":"E039","date":"2026-04-13","category":"Health","shop":"Popular Diagnostic","amount":656},{"id":"E040","date":"2026-04-13","category":"Transport","shop":"Pathao","amount":597},{"id":"E041","date":"2026-04-14","category":"Clothing","shop":"Cats Eye","amount":3246},{"id":"E042","date":"2026-04-14","category":"Groceries","shop":"Unimart","amount":1796},{"id":"E043","date":"2026-04-14","category":"Transport","shop":"BRTC bus","amount":505},{"id":"E044","date":"2026-04-15","category":"Transport","shop":"Uber","amount":586},{"id":"E045","date":"2026-04-17","category":"Entertainment","shop":"Steam","amount":382},{"id":"E046","date":"2026-04-17","category":"Food","shop":"Panda Garden","amount":742.5}],"pockets":[{"id":"SP-1","name":"Wedding","item":"reception hall booking","target":300000,"contribution":20000},{"id":"SP-2","name":"Laptop","item":"MacBook Air M4","target":145000,"contribution":12000},{"id":"SP-3","name":"Trip","item":"Cox's Bazar family trip","target":45000,"contribution":5000}],"dpsRate":9},{"id":"PUB-08","today":"2026-09-20","monthLast":"2026-08","monthThis":"2026-09","salary":110000,"expenses":[{"id":"E001","date":"2026-08-03","category":"Food","shop":"Star Kabab","amount":610.5},{"id":"E002","date":"2026-08-03","category":"Transport","shop":"Uber","amount":428},{"id":"E003","date":"2026-08-04","category":"Utilities","shop":"DESCO","amount":2661},{"id":"E004","date":"2026-08-05","category":"Rent","shop":"Landlord","amount":17000},{"id":"E005","date":"2026-08-05","category":"Transport","shop":"BRTC bus","amount":600},{"id":"E006","date":"2026-08-06","category":"Entertainment","shop":"Netflix","amount":1323},{"id":"E007","date":"2026-08-07","category":"Clothing","shop":"Aarong","amount":953},{"id":"E008","date":"2026-08-08","category":"Transport","shop":"CNG","amount":326},{"id":"E009","date":"2026-08-09","category":"Health","shop":"Lazz Pharma","amount":354},{"id":"E010","date":"2026-08-09","category":"Health","shop":"Popular Diagnostic","amount":1612.5},{"id":"E011","date":"2026-08-12","category":"Mobile","shop":"bKash","amount":170},{"id":"E012","date":"2026-08-13","category":"Clothing","shop":"Cats Eye","amount":2752},{"id":"E013","date":"2026-08-13","category":"Entertainment","shop":"Steam","amount":298.5},{"id":"E014","date":"2026-08-13","category":"Transport","shop":"CNG","amount":207.5},{"id":"E015","date":"2026-08-15","category":"Health","shop":"Popular Diagnostic","amount":1292},{"id":"E016","date":"2026-08-18","category":"Entertainment","shop":"Netflix","amount":607.5},{"id":"E017","date":"2026-08-19","category":"Education","shop":"Udemy","amount":898.5},{"id":"E018","date":"2026-08-19","category":"Entertainment","shop":"Netflix","amount":891.5},{"id":"E019","date":"2026-08-21","category":"Clothing","shop":"Yellow","amount":3319},{"id":"E020","date":"2026-08-22","category":"Clothing","shop":"Aarong","amount":834.5},{"id":"E021","date":"2026-08-23","category":"Health","shop":"Lazz Pharma","amount":665},{"id":"E022","date":"2026-08-23","category":"Transport","shop":"Uber","amount":380.5},{"id":"E023","date":"2026-08-23","category":"Utilities","shop":"Titas Gas","amount":1705},{"id":"E024","date":"2026-08-24","category":"Education","shop":"Bookworm","amount":1021},{"id":"E025","date":"2026-08-24","category":"Health","shop":"Popular Diagnostic","amount":1454},{"id":"E026","date":"2026-08-25","category":"Groceries","shop":"Meena Bazar","amount":2785.5},{"id":"E027","date":"2026-08-25","category":"Health","shop":"Popular Diagnostic","amount":2445},{"id":"E028","date":"2026-08-26","category":"Food","shop":"Madchef","amount":176},{"id":"E029","date":"2026-08-28","category":"Food","shop":"Star Kabab","amount":673},{"id":"E030","date":"2026-09-02","category":"Rent","shop":"Landlord","amount":17000},{"id":"E031","date":"2026-09-02","category":"Utilities","shop":"Titas Gas","amount":2293},{"id":"E032","date":"2026-09-03","category":"Education","shop":"Udemy","amount":1625},{"id":"E033","date":"2026-09-03","category":"Entertainment","shop":"Steam","amount":939},{"id":"E034","date":"2026-09-03","category":"Health","shop":"Lazz Pharma","amount":303},{"id":"E035","date":"2026-09-04","category":"Mobile","shop":"GP recharge","amount":549},{"id":"E036","date":"2026-09-06","category":"Food","shop":"Chillox","amount":572.5},{"id":"E037","date":"2026-09-08","category":"Groceries","shop":"Agora","amount":619.5},{"id":"E038","date":"2026-09-10","category":"Education","shop":"Udemy","amount":2579},{"id":"E039","date":"2026-09-11","category":"Education","shop":"Udemy","amount":1790},{"id":"E040","date":"2026-09-13","category":"Transport","shop":"CNG","amount":558},{"id":"E041","date":"2026-09-14","category":"Education","shop":"Udemy","amount":2427},{"id":"E042","date":"2026-09-14","category":"Entertainment","shop":"Star Cineplex","amount":518},{"id":"E043","date":"2026-09-15","category":"Mobile","shop":"Robi recharge","amount":572},{"id":"E044","date":"2026-09-18","category":"Health","shop":"Popular Diagnostic","amount":2424},{"id":"E045","date":"2026-09-19","category":"Food","shop":"Sultans Dine","amount":487},{"id":"E046","date":"2026-09-19","category":"Transport","shop":"Uber","amount":150},{"id":"E047","date":"2026-09-19","category":"Utilities","shop":"Dhaka WASA","amount":1467},{"id":"E048","date":"2026-09-20","category":"Clothing","shop":"Aarong","amount":1314},{"id":"E049","date":"2026-09-20","category":"Clothing","shop":"Yellow","amount":2178}],"pockets":[{"id":"SP-1","name":"Flat deposit","item":"2 bed Mirpur advance","target":200000,"contribution":15000},{"id":"SP-2","name":"Phone","item":"Pixel 9a","target":65000,"contribution":6000},{"id":"SP-3","name":"Bike","item":"Honda Livo","target":150000,"contribution":9000}],"dpsRate":10},{"id":"PUB-09","today":"2026-09-11","monthLast":"2026-08","monthThis":"2026-09","salary":90000,"expenses":[{"id":"E001","date":"2026-08-02","category":"Rent","shop":"Landlord","amount":25000},{"id":"E002","date":"2026-08-03","category":"Entertainment","shop":"Star Cineplex","amount":275.5},{"id":"E003","date":"2026-08-03","category":"Mobile","shop":"Robi recharge","amount":965},{"id":"E004","date":"2026-08-05","category":"Utilities","shop":"Dhaka WASA","amount":2456},{"id":"E005","date":"2026-08-09","category":"Groceries","shop":"Meena Bazar","amount":1089},{"id":"E006","date":"2026-08-10","category":"Education","shop":"Bookworm","amount":2796},{"id":"E007","date":"2026-08-10","category":"Transport","shop":"Uber","amount":219},{"id":"E008","date":"2026-08-11","category":"Mobile","shop":"Robi recharge","amount":873.5},{"id":"E009","date":"2026-08-12","category":"Food","shop":"Panda Garden","amount":155},{"id":"E010","date":"2026-08-14","category":"Transport","shop":"Pathao","amount":237},{"id":"E011","date":"2026-08-15","category":"Food","shop":"Chillox","amount":847},{"id":"E012","date":"2026-08-15","category":"Mobile","shop":"GP recharge","amount":517.5},{"id":"E013","date":"2026-08-15","category":"Utilities","shop":"DESCO","amount":1517},{"id":"E014","date":"2026-08-15","category":"Utilities","shop":"Dhaka WASA","amount":2686},{"id":"E015","date":"2026-08-16","category":"Food","shop":"Sultans Dine","amount":535},{"id":"E016","date":"2026-08-16","category":"Mobile","shop":"bKash","amount":215},{"id":"E017","date":"2026-08-17","category":"Mobile","shop":"GP recharge","amount":456},{"id":"E018","date":"2026-08-20","category":"Food","shop":"Panda Garden","amount":768},{"id":"E019","date":"2026-08-21","category":"Education","shop":"Udemy","amount":625},{"id":"E020","date":"2026-08-21","category":"Entertainment","shop":"Steam","amount":1137},{"id":"E021","date":"2026-08-21","category":"Mobile","shop":"GP recharge","amount":460},{"id":"E022","date":"2026-08-22","category":"Food","shop":"Sultans Dine","amount":597},{"id":"E023","date":"2026-08-22","category":"Groceries","shop":"Unimart","amount":2094},{"id":"E024","date":"2026-08-24","category":"Education","shop":"Bookworm","amount":1535.5},{"id":"E025","date":"2026-08-25","category":"Education","shop":"Bookworm","amount":539.5},{"id":"E026","date":"2026-08-25","category":"Food","shop":"Sultans Dine","amount":359.5},{"id":"E027","date":"2026-08-25","category":"Health","shop":"Popular Diagnostic","amount":1690.5},{"id":"E028","date":"2026-08-26","category":"Education","shop":"Bookworm","amount":2428},{"id":"E029","date":"2026-08-27","category":"Groceries","shop":"Agora","amount":2999},{"id":"E030","date":"2026-08-28","category":"Utilities","shop":"Titas Gas","amount":2860},{"id":"E031","date":"2026-09-02","category":"Entertainment","shop":"Netflix","amount":1363},{"id":"E032","date":"2026-09-02","category":"Rent","shop":"Landlord","amount":25000},{"id":"E033","date":"2026-09-02","category":"Utilities","shop":"Titas Gas","amount":2974},{"id":"E034","date":"2026-09-05","category":"Clothing","shop":"Cats Eye","amount":1249},{"id":"E035","date":"2026-09-06","category":"Utilities","shop":"DESCO","amount":2789.5},{"id":"E036","date":"2026-09-07","category":"Education","shop":"Udemy","amount":2484.5},{"id":"E037","date":"2026-09-08","category":"Mobile","shop":"Robi recharge","amount":132.5},{"id":"E038","date":"2026-09-08","category":"Utilities","shop":"Titas Gas","amount":2082},{"id":"E039","date":"2026-09-09","category":"Transport","shop":"BRTC bus","amount":384},{"id":"E040","date":"2026-09-10","category":"Education","shop":"Udemy","amount":2956},{"id":"E041","date":"2026-09-10","category":"Groceries","shop":"Unimart","amount":2538}],"pockets":[{"id":"SP-1","name":"Wedding","item":"reception hall booking","target":300000,"contribution":20000},{"id":"SP-2","name":"Phone","item":"Pixel 9a","target":65000,"contribution":6000},{"id":"SP-3","name":"Flat deposit","item":"2 bed Mirpur advance","target":200000,"contribution":15000}],"dpsRate":8.5},{"id":"PUB-10","today":"2026-09-12","monthLast":"2026-08","monthThis":"2026-09","salary":90000,"expenses":[{"id":"E001","date":"2026-08-01","category":"Health","shop":"Lazz Pharma","amount":222},{"id":"E002","date":"2026-08-02","category":"Education","shop":"Udemy","amount":2952},{"id":"E003","date":"2026-08-03","category":"Mobile","shop":"GP recharge","amount":606.5},{"id":"E004","date":"2026-08-03","category":"Rent","shop":"Landlord","amount":21000},{"id":"E005","date":"2026-08-04","category":"Education","shop":"Bookworm","amount":1340},{"id":"E006","date":"2026-08-04","category":"Food","shop":"Panda Garden","amount":635},{"id":"E007","date":"2026-08-04","category":"Transport","shop":"Pathao","amount":345.5},{"id":"E008","date":"2026-08-05","category":"Mobile","shop":"bKash","amount":632.5},{"id":"E009","date":"2026-08-06","category":"Transport","shop":"BRTC bus","amount":372},{"id":"E010","date":"2026-08-10","category":"Health","shop":"Popular Diagnostic","amount":2306},{"id":"E011","date":"2026-08-13","category":"Entertainment","shop":"Star Cineplex","amount":1474},{"id":"E012","date":"2026-08-13","category":"Entertainment","shop":"Star Cineplex","amount":704},{"id":"E013","date":"2026-08-14","category":"Mobile","shop":"GP recharge","amount":447.5},{"id":"E014","date":"2026-08-14","category":"Transport","shop":"Uber","amount":331},{"id":"E015","date":"2026-08-16","category":"Groceries","shop":"Shwapno","amount":1793.5},{"id":"E016","date":"2026-08-17","category":"Food","shop":"Star Kabab","amount":433.5},{"id":"E017","date":"2026-08-17","category":"Groceries","shop":"Agora","amount":1278},{"id":"E018","date":"2026-08-18","category":"Transport","shop":"Uber","amount":137},{"id":"E019","date":"2026-08-19","category":"Groceries","shop":"Unimart","amount":3285},{"id":"E020","date":"2026-08-19","category":"Mobile","shop":"Robi recharge","amount":258},{"id":"E021","date":"2026-08-20","category":"Clothing","shop":"Cats Eye","amount":3099},{"id":"E022","date":"2026-08-20","category":"Food","shop":"Star Kabab","amount":811},{"id":"E023","date":"2026-08-20","category":"Utilities","shop":"DESCO","amount":1452},{"id":"E024","date":"2026-08-22","category":"Groceries","shop":"Shwapno","amount":1267.5},{"id":"E025","date":"2026-08-22","category":"Groceries","shop":"Shwapno","amount":2093},{"id":"E026","date":"2026-08-29","category":"Groceries","shop":"Shwapno","amount":1612},{"id":"E027","date":"2026-08-29","category":"Transport","shop":"Uber","amount":133},{"id":"E028","date":"2026-08-31","category":"Food","shop":"Star Kabab","amount":550.5},{"id":"E029","date":"2026-08-31","category":"Health","shop":"Popular Diagnostic","amount":2077.5},{"id":"E030","date":"2026-08-31","category":"Utilities","shop":"Titas Gas","amount":2352},{"id":"E031","date":"2026-09-01","category":"Transport","shop":"BRTC bus","amount":353},{"id":"E032","date":"2026-09-02","category":"Mobile","shop":"bKash","amount":811},{"id":"E033","date":"2026-09-03","category":"Mobile","shop":"GP recharge","amount":130},{"id":"E034","date":"2026-09-04","category":"Food","shop":"Chillox","amount":131},{"id":"E035","date":"2026-09-04","category":"Rent","shop":"Landlord","amount":21000},{"id":"E036","date":"2026-09-06","category":"Groceries","shop":"Shwapno","amount":2991.5},{"id":"E037","date":"2026-09-06","category":"Health","shop":"Lazz Pharma","amount":270.5},{"id":"E038","date":"2026-09-07","category":"Education","shop":"Udemy","amount":1749.5},{"id":"E039","date":"2026-09-07","category":"Entertainment","shop":"Steam","amount":1469},{"id":"E040","date":"2026-09-10","category":"Health","shop":"Lazz Pharma","amount":1617},{"id":"E041","date":"2026-09-11","category":"Utilities","shop":"DESCO","amount":1725}],"pockets":[{"id":"SP-1","name":"Trip","item":"Cox's Bazar family trip","target":45000,"contribution":5000},{"id":"SP-2","name":"Laptop","item":"MacBook Air M4","target":145000,"contribution":12000},{"id":"SP-3","name":"Wedding","item":"reception hall booking","target":300000,"contribution":20000}],"dpsRate":8.5},{"id":"PUB-11","today":"2026-06-24","monthLast":"2026-05","monthThis":"2026-06","salary":60000,"expenses":[{"id":"E001","date":"2026-05-01","category":"Groceries","shop":"Agora","amount":3084},{"id":"E002","date":"2026-05-02","category":"Entertainment","shop":"Steam","amount":441.5},{"id":"E003","date":"2026-05-02","category":"Transport","shop":"Uber","amount":522.5},{"id":"E004","date":"2026-05-03","category":"Clothing","shop":"Aarong","amount":3429},{"id":"E005","date":"2026-05-04","category":"Rent","shop":"Landlord","amount":24000},{"id":"E006","date":"2026-05-04","category":"Transport","shop":"Uber","amount":452},{"id":"E007","date":"2026-05-06","category":"Food","shop":"Chillox","amount":684},{"id":"E008","date":"2026-05-07","category":"Groceries","shop":"Shwapno","amount":1124},{"id":"E009","date":"2026-05-08","category":"Groceries","shop":"Shwapno","amount":2506},{"id":"E010","date":"2026-05-09","category":"Entertainment","shop":"Star Cineplex","amount":436.5},{"id":"E011","date":"2026-05-11","category":"Mobile","shop":"bKash","amount":201},{"id":"E012","date":"2026-05-11","category":"Mobile","shop":"bKash","amount":252},{"id":"E013","date":"2026-05-12","category":"Food","shop":"Sultans Dine","amount":175},{"id":"E014","date":"2026-05-14","category":"Transport","shop":"Uber","amount":140},{"id":"E015","date":"2026-05-15","category":"Health","shop":"Popular Diagnostic","amount":1804},{"id":"E016","date":"2026-05-16","category":"Clothing","shop":"Yellow","amount":3166},{"id":"E017","date":"2026-05-17","category":"Mobile","shop":"GP recharge","amount":199},{"id":"E018","date":"2026-05-19","category":"Health","shop":"Lazz Pharma","amount":625},{"id":"E019","date":"2026-05-19","category":"Mobile","shop":"bKash","amount":901.5},{"id":"E020","date":"2026-05-21","category":"Food","shop":"Chillox","amount":543.5},{"id":"E021","date":"2026-05-22","category":"Education","shop":"Bookworm","amount":1638.5},{"id":"E022","date":"2026-05-23","category":"Mobile","shop":"GP recharge","amount":391},{"id":"E023","date":"2026-05-24","category":"Entertainment","shop":"Steam","amount":446},{"id":"E024","date":"2026-05-24","category":"Food","shop":"Madchef","amount":787.5},{"id":"E025","date":"2026-05-26","category":"Food","shop":"Panda Garden","amount":736},{"id":"E026","date":"2026-05-28","category":"Entertainment","shop":"Netflix","amount":885},{"id":"E027","date":"2026-05-28","category":"Utilities","shop":"DESCO","amount":2683},{"id":"E028","date":"2026-05-29","category":"Entertainment","shop":"Netflix","amount":1356},{"id":"E029","date":"2026-05-31","category":"Food","shop":"Chillox","amount":790.5},{"id":"E030","date":"2026-05-31","category":"Health","shop":"Popular Diagnostic","amount":2260.5},{"id":"E031","date":"2026-06-01","category":"Rent","shop":"Landlord","amount":24000},{"id":"E032","date":"2026-06-02","category":"Food","shop":"Panda Garden","amount":851.5},{"id":"E033","date":"2026-06-04","category":"Clothing","shop":"Yellow","amount":2834},{"id":"E034","date":"2026-06-04","category":"Mobile","shop":"bKash","amount":469},{"id":"E035","date":"2026-06-05","category":"Clothing","shop":"Aarong","amount":881.5},{"id":"E036","date":"2026-06-06","category":"Entertainment","shop":"Star Cineplex","amount":1470},{"id":"E037","date":"2026-06-07","category":"Groceries","shop":"Meena Bazar","amount":1801.5},{"id":"E038","date":"2026-06-09","category":"Entertainment","shop":"Star Cineplex","amount":858},{"id":"E039","date":"2026-06-09","category":"Transport","shop":"Pathao","amount":242},{"id":"E040","date":"2026-06-10","category":"Food","shop":"Chillox","amount":600},{"id":"E041","date":"2026-06-12","category":"Clothing","shop":"Aarong","amount":3190},{"id":"E042","date":"2026-06-14","category":"Education","shop":"Bookworm","amount":629.5},{"id":"E043","date":"2026-06-14","category":"Education","shop":"Udemy","amount":1854},{"id":"E044","date":"2026-06-14","category":"Transport","shop":"Uber","amount":326},{"id":"E045","date":"2026-06-16","category":"Entertainment","shop":"Netflix","amount":518.5},{"id":"E046","date":"2026-06-16","category":"Entertainment","shop":"Steam","amount":617},{"id":"E047","date":"2026-06-17","category":"Mobile","shop":"Robi recharge","amount":991},{"id":"E048","date":"2026-06-18","category":"Food","shop":"Sultans Dine","amount":470},{"id":"E049","date":"2026-06-18","category":"Mobile","shop":"GP recharge","amount":139},{"id":"E050","date":"2026-06-19","category":"Education","shop":"Bookworm","amount":1867.5},{"id":"E051","date":"2026-06-20","category":"Education","shop":"Bookworm","amount":1032.5},{"id":"E052","date":"2026-06-20","category":"Education","shop":"Udemy","amount":1049.5},{"id":"E053","date":"2026-06-20","category":"Entertainment","shop":"Star Cineplex","amount":1433},{"id":"E054","date":"2026-06-21","category":"Education","shop":"Bookworm","amount":1727}],"pockets":[{"id":"SP-1","name":"Laptop","item":"MacBook Air M4","target":145000,"contribution":12000},{"id":"SP-2","name":"Trip","item":"Cox's Bazar family trip","target":45000,"contribution":5000},{"id":"SP-3","name":"Flat deposit","item":"2 bed Mirpur advance","target":200000,"contribution":15000}],"dpsRate":7.5},{"id":"PUB-12","today":"2026-04-16","monthLast":"2026-03","monthThis":"2026-04","salary":80000,"expenses":[{"id":"E001","date":"2026-03-01","category":"Clothing","shop":"Yellow","amount":3484},{"id":"E002","date":"2026-03-01","category":"Utilities","shop":"Titas Gas","amount":2329},{"id":"E003","date":"2026-03-02","category":"Utilities","shop":"Dhaka WASA","amount":2311},{"id":"E004","date":"2026-03-03","category":"Rent","shop":"Landlord","amount":12000},{"id":"E005","date":"2026-03-04","category":"Mobile","shop":"GP recharge","amount":695.5},{"id":"E006","date":"2026-03-04","category":"Mobile","shop":"bKash","amount":911},{"id":"E007","date":"2026-03-05","category":"Entertainment","shop":"Steam","amount":1371.5},{"id":"E008","date":"2026-03-08","category":"Clothing","shop":"Yellow","amount":2082},{"id":"E009","date":"2026-03-08","category":"Education","shop":"Udemy","amount":969},{"id":"E010","date":"2026-03-10","category":"Transport","shop":"CNG","amount":407.5},{"id":"E011","date":"2026-03-11","category":"Utilities","shop":"Titas Gas","amount":2066},{"id":"E012","date":"2026-03-13","category":"Transport","shop":"Pathao","amount":210},{"id":"E013","date":"2026-03-14","category":"Food","shop":"Sultans Dine","amount":658.5},{"id":"E014","date":"2026-03-14","category":"Health","shop":"Popular Diagnostic","amount":2107},{"id":"E015","date":"2026-03-15","category":"Food","shop":"Chillox","amount":380},{"id":"E016","date":"2026-03-16","category":"Health","shop":"Popular Diagnostic","amount":1985},{"id":"E017","date":"2026-03-16","category":"Utilities","shop":"Titas Gas","amount":1672},{"id":"E018","date":"2026-03-17","category":"Entertainment","shop":"Netflix","amount":423},{"id":"E019","date":"2026-03-18","category":"Food","shop":"Sultans Dine","amount":559.5},{"id":"E020","date":"2026-03-18","category":"Mobile","shop":"GP recharge","amount":633},{"id":"E021","date":"2026-03-19","category":"Health","shop":"Popular Diagnostic","amount":2256},{"id":"E022","date":"2026-03-21","category":"Entertainment","shop":"Netflix","amount":428},{"id":"E023","date":"2026-03-22","category":"Entertainment","shop":"Netflix","amount":607},{"id":"E024","date":"2026-03-22","category":"Mobile","shop":"Robi recharge","amount":888},{"id":"E025","date":"2026-03-23","category":"Groceries","shop":"Unimart","amount":1248},{"id":"E026","date":"2026-03-25","category":"Entertainment","shop":"Netflix","amount":305},{"id":"E027","date":"2026-03-26","category":"Education","shop":"Udemy","amount":609.5},{"id":"E028","date":"2026-03-26","category":"Mobile","shop":"bKash","amount":100},{"id":"E029","date":"2026-03-29","category":"Health","shop":"Popular Diagnostic","amount":1006},{"id":"E030","date":"2026-03-30","category":"Food","shop":"Sultans Dine","amount":533},{"id":"E031","date":"2026-04-01","category":"Health","shop":"Popular Diagnostic","amount":393.5},{"id":"E032","date":"2026-04-02","category":"Education","shop":"Bookworm","amount":1906},{"id":"E033","date":"2026-04-03","category":"Entertainment","shop":"Star Cineplex","amount":1271},{"id":"E034","date":"2026-04-03","category":"Mobile","shop":"Robi recharge","amount":102},{"id":"E035","date":"2026-04-04","category":"Education","shop":"Udemy","amount":2681},{"id":"E036","date":"2026-04-04","category":"Food","shop":"Madchef","amount":197.5},{"id":"E037","date":"2026-04-04","category":"Groceries","shop":"Agora","amount":1053},{"id":"E038","date":"2026-04-05","category":"Rent","shop":"Landlord","amount":12000},{"id":"E039","date":"2026-04-07","category":"Transport","shop":"CNG","amount":62},{"id":"E040","date":"2026-04-08","category":"Utilities","shop":"DESCO","amount":2066},{"id":"E041","date":"2026-04-09","category":"Groceries","shop":"Agora","amount":3053},{"id":"E042","date":"2026-04-09","category":"Utilities","shop":"Titas Gas","amount":2529.5},{"id":"E043","date":"2026-04-10","category":"Food","shop":"Madchef","amount":464},{"id":"E044","date":"2026-04-10","category":"Utilities","shop":"DESCO","amount":1655},{"id":"E045","date":"2026-04-12","category":"Utilities","shop":"Dhaka WASA","amount":1009},{"id":"E046","date":"2026-04-15","category":"Education","shop":"Udemy","amount":680}],"pockets":[{"id":"SP-1","name":"Bike","item":"Honda Livo","target":150000,"contribution":9000},{"id":"SP-2","name":"Trip","item":"Cox's Bazar family trip","target":45000,"contribution":5000},{"id":"SP-3","name":"Phone","item":"Pixel 9a","target":65000,"contribution":6000}],"dpsRate":7.5},{"id":"PUB-13","today":"2026-09-20","monthLast":"2026-08","monthThis":"2026-09","salary":60000,"expenses":[{"id":"E001","date":"2026-08-01","category":"Clothing","shop":"Aarong","amount":1226},{"id":"E002","date":"2026-08-01","category":"Utilities","shop":"Dhaka WASA","amount":1171},{"id":"E003","date":"2026-08-02","category":"Food","shop":"Madchef","amount":764},{"id":"E004","date":"2026-08-03","category":"Clothing","shop":"Aarong","amount":3554},{"id":"E005","date":"2026-08-03","category":"Groceries","shop":"Unimart","amount":2537},{"id":"E006","date":"2026-08-05","category":"Groceries","shop":"Meena Bazar","amount":457},{"id":"E007","date":"2026-08-05","category":"Rent","shop":"Landlord","amount":12000},{"id":"E008","date":"2026-08-06","category":"Groceries","shop":"Meena Bazar","amount":3136},{"id":"E009","date":"2026-08-07","category":"Clothing","shop":"Yellow","amount":2867},{"id":"E010","date":"2026-08-07","category":"Mobile","shop":"Robi recharge","amount":280},{"id":"E011","date":"2026-08-10","category":"Entertainment","shop":"Star Cineplex","amount":239},{"id":"E012","date":"2026-08-10","category":"Health","shop":"Lazz Pharma","amount":2083},{"id":"E013","date":"2026-08-11","category":"Transport","shop":"Pathao","amount":371},{"id":"E014","date":"2026-08-14","category":"Transport","shop":"Pathao","amount":198},{"id":"E015","date":"2026-08-15","category":"Health","shop":"Lazz Pharma","amount":473},{"id":"E016","date":"2026-08-15","category":"Mobile","shop":"Robi recharge","amount":174.5},{"id":"E017","date":"2026-08-16","category":"Clothing","shop":"Cats Eye","amount":2939},{"id":"E018","date":"2026-08-18","category":"Groceries","shop":"Unimart","amount":2606},{"id":"E019","date":"2026-08-18","category":"Transport","shop":"Pathao","amount":171},{"id":"E020","date":"2026-08-19","category":"Groceries","shop":"Shwapno","amount":1445.5},{"id":"E021","date":"2026-08-19","category":"Mobile","shop":"bKash","amount":766},{"id":"E022","date":"2026-08-23","category":"Utilities","shop":"Titas Gas","amount":2133.5},{"id":"E023","date":"2026-08-25","category":"Entertainment","shop":"Star Cineplex","amount":520},{"id":"E024","date":"2026-08-28","category":"Groceries","shop":"Shwapno","amount":3237},{"id":"E025","date":"2026-08-29","category":"Clothing","shop":"Aarong","amount":1857.5},{"id":"E026","date":"2026-08-31","category":"Food","shop":"Madchef","amount":704},{"id":"E027","date":"2026-09-01","category":"Entertainment","shop":"Netflix","amount":532},{"id":"E028","date":"2026-09-01","category":"Mobile","shop":"GP recharge","amount":282},{"id":"E029","date":"2026-09-01","category":"Mobile","shop":"Robi recharge","amount":524},{"id":"E030","date":"2026-09-05","category":"Rent","shop":"Landlord","amount":12000},{"id":"E031","date":"2026-09-06","category":"Clothing","shop":"Cats Eye","amount":859},{"id":"E032","date":"2026-09-06","category":"Mobile","shop":"bKash","amount":688},{"id":"E033","date":"2026-09-07","category":"Mobile","shop":"bKash","amount":233.5},{"id":"E034","date":"2026-09-08","category":"Entertainment","shop":"Star Cineplex","amount":697},{"id":"E035","date":"2026-09-09","category":"Food","shop":"Panda Garden","amount":725},{"id":"E036","date":"2026-09-11","category":"Utilities","shop":"DESCO","amount":2194.5},{"id":"E037","date":"2026-09-14","category":"Entertainment","shop":"Star Cineplex","amount":570},{"id":"E038","date":"2026-09-16","category":"Clothing","shop":"Aarong","amount":3118},{"id":"E039","date":"2026-09-16","category":"Groceries","shop":"Unimart","amount":1928},{"id":"E040","date":"2026-09-18","category":"Groceries","shop":"Agora","amount":738},{"id":"E041","date":"2026-09-19","category":"Food","shop":"Madchef","amount":500},{"id":"E042","date":"2026-09-19","category":"Groceries","shop":"Agora","amount":1221},{"id":"E043","date":"2026-09-19","category":"Health","shop":"Lazz Pharma","amount":606},{"id":"E044","date":"2026-09-19","category":"Utilities","shop":"Dhaka WASA","amount":1641}],"pockets":[{"id":"SP-1","name":"Wedding","item":"reception hall booking","target":300000,"contribution":20000},{"id":"SP-2","name":"Phone","item":"Pixel 9a","target":65000,"contribution":6000},{"id":"SP-3","name":"Flat deposit","item":"2 bed Mirpur advance","target":200000,"contribution":15000}],"dpsRate":8},{"id":"PUB-14","today":"2026-06-22","monthLast":"2026-05","monthThis":"2026-06","salary":50000,"expenses":[{"id":"E001","date":"2026-05-01","category":"Groceries","shop":"Agora","amount":3454},{"id":"E002","date":"2026-05-01","category":"Utilities","shop":"Dhaka WASA","amount":2463},{"id":"E003","date":"2026-05-02","category":"Entertainment","shop":"Netflix","amount":1225},{"id":"E004","date":"2026-05-02","category":"Mobile","shop":"bKash","amount":957},{"id":"E005","date":"2026-05-02","category":"Transport","shop":"Uber","amount":333},{"id":"E006","date":"2026-05-03","category":"Rent","shop":"Landlord","amount":18000},{"id":"E007","date":"2026-05-04","category":"Utilities","shop":"Dhaka WASA","amount":2067},{"id":"E008","date":"2026-05-06","category":"Health","shop":"Lazz Pharma","amount":239},{"id":"E009","date":"2026-05-07","category":"Entertainment","shop":"Steam","amount":774},{"id":"E010","date":"2026-05-09","category":"Clothing","shop":"Cats Eye","amount":2625.5},{"id":"E011","date":"2026-05-10","category":"Utilities","shop":"DESCO","amount":1782},{"id":"E012","date":"2026-05-11","category":"Groceries","shop":"Agora","amount":1948},{"id":"E013","date":"2026-05-12","category":"Utilities","shop":"Titas Gas","amount":1353},{"id":"E014","date":"2026-05-15","category":"Transport","shop":"Pathao","amount":82},{"id":"E015","date":"2026-05-18","category":"Clothing","shop":"Aarong","amount":2589},{"id":"E016","date":"2026-05-18","category":"Utilities","shop":"Titas Gas","amount":2118},{"id":"E017","date":"2026-05-20","category":"Transport","shop":"Uber","amount":384},{"id":"E018","date":"2026-05-24","category":"Clothing","shop":"Cats Eye","amount":1549},{"id":"E019","date":"2026-05-25","category":"Food","shop":"Chillox","amount":793},{"id":"E020","date":"2026-05-25","category":"Health","shop":"Lazz Pharma","amount":2041.5},{"id":"E021","date":"2026-05-25","category":"Mobile","shop":"bKash","amount":129},{"id":"E022","date":"2026-05-28","category":"Food","shop":"Chillox","amount":554},{"id":"E023","date":"2026-05-28","category":"Food","shop":"Star Kabab","amount":601},{"id":"E024","date":"2026-05-29","category":"Education","shop":"Bookworm","amount":2047},{"id":"E025","date":"2026-05-29","category":"Utilities","shop":"Dhaka WASA","amount":915},{"id":"E026","date":"2026-05-31","category":"Clothing","shop":"Yellow","amount":3490},{"id":"E027","date":"2026-06-01","category":"Rent","shop":"Landlord","amount":18000},{"id":"E028","date":"2026-06-03","category":"Groceries","shop":"Shwapno","amount":2128},{"id":"E029","date":"2026-06-05","category":"Food","shop":"Sultans Dine","amount":271.5},{"id":"E030","date":"2026-06-06","category":"Mobile","shop":"bKash","amount":552},{"id":"E031","date":"2026-06-07","category":"Health","shop":"Popular Diagnostic","amount":2221},{"id":"E032","date":"2026-06-08","category":"Food","shop":"Panda Garden","amount":519},{"id":"E033","date":"2026-06-09","category":"Education","shop":"Udemy","amount":1783.5},{"id":"E034","date":"2026-06-10","category":"Clothing","shop":"Aarong","amount":1061.5},{"id":"E035","date":"2026-06-10","category":"Health","shop":"Lazz Pharma","amount":2099.5},{"id":"E036","date":"2026-06-10","category":"Transport","shop":"BRTC bus","amount":130},{"id":"E037","date":"2026-06-13","category":"Education","shop":"Bookworm","amount":1644},{"id":"E038","date":"2026-06-16","category":"Groceries","shop":"Unimart","amount":502.5},{"id":"E039","date":"2026-06-17","category":"Health","shop":"Lazz Pharma","amount":2360},{"id":"E040","date":"2026-06-18","category":"Groceries","shop":"Agora","amount":3400},{"id":"E041","date":"2026-06-19","category":"Clothing","shop":"Yellow","amount":2020},{"id":"E042","date":"2026-06-20","category":"Food","shop":"Chillox","amount":859},{"id":"E043","date":"2026-06-20","category":"Food","shop":"Sultans Dine","amount":228},{"id":"E044","date":"2026-06-21","category":"Entertainment","shop":"Netflix","amount":627.5},{"id":"E045","date":"2026-06-22","category":"Food","shop":"Madchef","amount":514}],"pockets":[{"id":"SP-1","name":"Bike","item":"Honda Livo","target":150000,"contribution":9000},{"id":"SP-2","name":"Laptop","item":"MacBook Air M4","target":145000,"contribution":12000},{"id":"SP-3","name":"Wedding","item":"reception hall booking","target":300000,"contribution":20000}],"dpsRate":10},{"id":"PUB-15","today":"2026-09-11","monthLast":"2026-08","monthThis":"2026-09","salary":65000,"expenses":[{"id":"E001","date":"2026-08-02","category":"Rent","shop":"Landlord","amount":17000},{"id":"E002","date":"2026-08-03","category":"Transport","shop":"BRTC bus","amount":386},{"id":"E003","date":"2026-08-04","category":"Utilities","shop":"DESCO","amount":2119},{"id":"E004","date":"2026-08-05","category":"Education","shop":"Udemy","amount":2093},{"id":"E005","date":"2026-08-05","category":"Groceries","shop":"Agora","amount":2542},{"id":"E006","date":"2026-08-05","category":"Groceries","shop":"Unimart","amount":2963},{"id":"E007","date":"2026-08-06","category":"Health","shop":"Popular Diagnostic","amount":2060},{"id":"E008","date":"2026-08-06","category":"Transport","shop":"BRTC bus","amount":91},{"id":"E009","date":"2026-08-07","category":"Mobile","shop":"bKash","amount":898.5},{"id":"E010","date":"2026-08-08","category":"Groceries","shop":"Shwapno","amount":2875},{"id":"E011","date":"2026-08-08","category":"Health","shop":"Lazz Pharma","amount":2012},{"id":"E012","date":"2026-08-09","category":"Clothing","shop":"Yellow","amount":2640},{"id":"E013","date":"2026-08-09","category":"Groceries","shop":"Unimart","amount":2942},{"id":"E014","date":"2026-08-10","category":"Food","shop":"Chillox","amount":630.5},{"id":"E015","date":"2026-08-12","category":"Education","shop":"Bookworm","amount":2217},{"id":"E016","date":"2026-08-13","category":"Mobile","shop":"bKash","amount":982},{"id":"E017","date":"2026-08-14","category":"Food","shop":"Madchef","amount":656.5},{"id":"E018","date":"2026-08-14","category":"Utilities","shop":"Dhaka WASA","amount":1019},{"id":"E019","date":"2026-08-16","category":"Food","shop":"Panda Garden","amount":266},{"id":"E020","date":"2026-08-16","category":"Transport","shop":"CNG","amount":141},{"id":"E021","date":"2026-08-19","category":"Clothing","shop":"Aarong","amount":3164},{"id":"E022","date":"2026-08-22","category":"Food","shop":"Chillox","amount":873},{"id":"E023","date":"2026-08-24","category":"Food","shop":"Sultans Dine","amount":615},{"id":"E024","date":"2026-08-24","category":"Health","shop":"Popular Diagnostic","amount":2471},{"id":"E025","date":"2026-08-24","category":"Transport","shop":"CNG","amount":171},{"id":"E026","date":"2026-08-25","category":"Entertainment","shop":"Netflix","amount":684},{"id":"E027","date":"2026-08-26","category":"Utilities","shop":"Titas Gas","amount":2375.5},{"id":"E028","date":"2026-08-27","category":"Clothing","shop":"Yellow","amount":2423},{"id":"E029","date":"2026-08-31","category":"Education","shop":"Udemy","amount":2709},{"id":"E030","date":"2026-08-31","category":"Entertainment","shop":"Steam","amount":1076},{"id":"E031","date":"2026-08-31","category":"Entertainment","shop":"Steam","amount":696},{"id":"E032","date":"2026-09-01","category":"Rent","shop":"Landlord","amount":17000},{"id":"E033","date":"2026-09-01","category":"Utilities","shop":"DESCO","amount":1154},{"id":"E034","date":"2026-09-02","category":"Entertainment","shop":"Steam","amount":1284},{"id":"E035","date":"2026-09-05","category":"Food","shop":"Star Kabab","amount":478},{"id":"E036","date":"2026-09-05","category":"Utilities","shop":"DESCO","amount":2617.5},{"id":"E037","date":"2026-09-06","category":"Education","shop":"Bookworm","amount":1671},{"id":"E038","date":"2026-09-06","category":"Utilities","shop":"Dhaka WASA","amount":2883.5},{"id":"E039","date":"2026-09-08","category":"Groceries","shop":"Shwapno","amount":1526},{"id":"E040","date":"2026-09-09","category":"Education","shop":"Udemy","amount":2972},{"id":"E041","date":"2026-09-11","category":"Mobile","shop":"GP recharge","amount":790}],"pockets":[{"id":"SP-1","name":"Bike","item":"Honda Livo","target":150000,"contribution":9000},{"id":"SP-2","name":"Wedding","item":"reception hall booking","target":300000,"contribution":20000},{"id":"SP-3","name":"Laptop","item":"MacBook Air M4","target":145000,"contribution":12000}],"dpsRate":10},{"id":"PUB-16","today":"2026-09-27","monthLast":"2026-08","monthThis":"2026-09","salary":85000,"expenses":[{"id":"E001","date":"2026-08-01","category":"Education","shop":"Udemy","amount":1219},{"id":"E002","date":"2026-08-01","category":"Food","shop":"Chillox","amount":816},{"id":"E003","date":"2026-08-01","category":"Food","shop":"Star Kabab","amount":815},{"id":"E004","date":"2026-08-02","category":"Clothing","shop":"Cats Eye","amount":1825},{"id":"E005","date":"2026-08-02","category":"Entertainment","shop":"Star Cineplex","amount":1155},{"id":"E006","date":"2026-08-04","category":"Clothing","shop":"Yellow","amount":2330},{"id":"E007","date":"2026-08-04","category":"Rent","shop":"Landlord","amount":18000},{"id":"E008","date":"2026-08-05","category":"Education","shop":"Udemy","amount":2520.5},{"id":"E009","date":"2026-08-05","category":"Food","shop":"Chillox","amount":566},{"id":"E010","date":"2026-08-05","category":"Transport","shop":"CNG","amount":107},{"id":"E011","date":"2026-08-07","category":"Health","shop":"Lazz Pharma","amount":1099},{"id":"E012","date":"2026-08-07","category":"Transport","shop":"Uber","amount":87},{"id":"E013","date":"2026-08-08","category":"Food","shop":"Sultans Dine","amount":687},{"id":"E014","date":"2026-08-09","category":"Mobile","shop":"bKash","amount":737},{"id":"E015","date":"2026-08-10","category":"Clothing","shop":"Cats Eye","amount":1227},{"id":"E016","date":"2026-08-12","category":"Transport","shop":"BRTC bus","amount":173},{"id":"E017","date":"2026-08-13","category":"Food","shop":"Chillox","amount":362},{"id":"E018","date":"2026-08-13","category":"Groceries","shop":"Shwapno","amount":1822.5},{"id":"E019","date":"2026-08-13","category":"Utilities","shop":"Dhaka WASA","amount":1386},{"id":"E020","date":"2026-08-20","category":"Mobile","shop":"GP recharge","amount":483},{"id":"E021","date":"2026-08-22","category":"Health","shop":"Lazz Pharma","amount":1572},{"id":"E022","date":"2026-08-23","category":"Food","shop":"Madchef","amount":346},{"id":"E023","date":"2026-08-26","category":"Education","shop":"Bookworm","amount":1643},{"id":"E024","date":"2026-08-27","category":"Clothing","shop":"Aarong","amount":3728.5},{"id":"E025","date":"2026-08-27","category":"Mobile","shop":"Robi recharge","amount":301},{"id":"E026","date":"2026-08-28","category":"Entertainment","shop":"Steam","amount":1004},{"id":"E027","date":"2026-08-29","category":"Entertainment","shop":"Steam","amount":1365},{"id":"E028","date":"2026-08-29","category":"Mobile","shop":"bKash","amount":660.5},{"id":"E029","date":"2026-08-29","category":"Mobile","shop":"bKash","amount":939.5},{"id":"E030","date":"2026-08-29","category":"Utilities","shop":"Dhaka WASA","amount":1904},{"id":"E031","date":"2026-08-31","category":"Education","shop":"Bookworm","amount":1410},{"id":"E032","date":"2026-08-31","category":"Health","shop":"Popular Diagnostic","amount":880},{"id":"E033","date":"2026-09-01","category":"Entertainment","shop":"Star Cineplex","amount":923},{"id":"E034","date":"2026-09-03","category":"Health","shop":"Lazz Pharma","amount":2433},{"id":"E035","date":"2026-09-04","category":"Entertainment","shop":"Netflix","amount":1142.5},{"id":"E036","date":"2026-09-04","category":"Rent","shop":"Landlord","amount":18000},{"id":"E037","date":"2026-09-04","category":"Transport","shop":"Pathao","amount":400},{"id":"E038","date":"2026-09-04","category":"Transport","shop":"Pathao","amount":433},{"id":"E039","date":"2026-09-05","category":"Utilities","shop":"Dhaka WASA","amount":846},{"id":"E040","date":"2026-09-06","category":"Health","shop":"Popular Diagnostic","amount":1922.5},{"id":"E041","date":"2026-09-07","category":"Utilities","shop":"Titas Gas","amount":2078},{"id":"E042","date":"2026-09-08","category":"Clothing","shop":"Cats Eye","amount":2962},{"id":"E043","date":"2026-09-08","category":"Education","shop":"Udemy","amount":817},{"id":"E044","date":"2026-09-08","category":"Health","shop":"Popular Diagnostic","amount":2169},{"id":"E045","date":"2026-09-10","category":"Education","shop":"Udemy","amount":768},{"id":"E046","date":"2026-09-10","category":"Health","shop":"Lazz Pharma","amount":1235},{"id":"E047","date":"2026-09-11","category":"Food","shop":"Chillox","amount":519},{"id":"E048","date":"2026-09-11","category":"Food","shop":"Panda Garden","amount":828},{"id":"E049","date":"2026-09-11","category":"Groceries","shop":"Shwapno","amount":846},{"id":"E050","date":"2026-09-11","category":"Mobile","shop":"bKash","amount":696},{"id":"E051","date":"2026-09-13","category":"Food","shop":"Sultans Dine","amount":436},{"id":"E052","date":"2026-09-17","category":"Entertainment","shop":"Star Cineplex","amount":1165},{"id":"E053","date":"2026-09-18","category":"Entertainment","shop":"Netflix","amount":657},{"id":"E054","date":"2026-09-19","category":"Education","shop":"Bookworm","amount":1737},{"id":"E055","date":"2026-09-19","category":"Entertainment","shop":"Steam","amount":937},{"id":"E056","date":"2026-09-21","category":"Education","shop":"Bookworm","amount":1415},{"id":"E057","date":"2026-09-22","category":"Utilities","shop":"DESCO","amount":2465},{"id":"E058","date":"2026-09-22","category":"Utilities","shop":"Titas Gas","amount":1161.5},{"id":"E059","date":"2026-09-24","category":"Utilities","shop":"Dhaka WASA","amount":2453},{"id":"E060","date":"2026-09-26","category":"Clothing","shop":"Aarong","amount":1837},{"id":"E061","date":"2026-09-26","category":"Utilities","shop":"Dhaka WASA","amount":1098}],"pockets":[{"id":"SP-1","name":"Phone","item":"Pixel 9a","target":65000,"contribution":6000},{"id":"SP-2","name":"Laptop","item":"MacBook Air M4","target":145000,"contribution":12000},{"id":"SP-3","name":"Trip","item":"Cox's Bazar family trip","target":45000,"contribution":5000}],"dpsRate":7.5},{"id":"PUB-17","today":"2026-09-10","monthLast":"2026-08","monthThis":"2026-09","salary":90000,"expenses":[{"id":"E001","date":"2026-08-01","category":"Mobile","shop":"GP recharge","amount":293.5},{"id":"E002","date":"2026-08-01","category":"Rent","shop":"Landlord","amount":23000},{"id":"E003","date":"2026-08-02","category":"Clothing","shop":"Yellow","amount":3754},{"id":"E004","date":"2026-08-02","category":"Entertainment","shop":"Netflix","amount":528},{"id":"E005","date":"2026-08-02","category":"Transport","shop":"CNG","amount":422},{"id":"E006","date":"2026-08-06","category":"Utilities","shop":"DESCO","amount":2371},{"id":"E007","date":"2026-08-07","category":"Mobile","shop":"bKash","amount":403.5},{"id":"E008","date":"2026-08-09","category":"Entertainment","shop":"Star Cineplex","amount":1450},{"id":"E009","date":"2026-08-10","category":"Clothing","shop":"Aarong","amount":3382.5},{"id":"E010","date":"2026-08-11","category":"Food","shop":"Chillox","amount":524},{"id":"E011","date":"2026-08-12","category":"Food","shop":"Sultans Dine","amount":842.5},{"id":"E012","date":"2026-08-12","category":"Utilities","shop":"Titas Gas","amount":2512},{"id":"E013","date":"2026-08-13","category":"Clothing","shop":"Yellow","amount":2829},{"id":"E014","date":"2026-08-13","category":"Health","shop":"Popular Diagnostic","amount":491},{"id":"E015","date":"2026-08-14","category":"Groceries","shop":"Agora","amount":2724.5},{"id":"E016","date":"2026-08-14","category":"Mobile","shop":"GP recharge","amount":821},{"id":"E017","date":"2026-08-15","category":"Food","shop":"Madchef","amount":380},{"id":"E018","date":"2026-08-16","category":"Food","shop":"Chillox","amount":669},{"id":"E019","date":"2026-08-16","category":"Food","shop":"Madchef","amount":832},{"id":"E020","date":"2026-08-17","category":"Entertainment","shop":"Netflix","amount":1153.5},{"id":"E021","date":"2026-08-18","category":"Entertainment","shop":"Netflix","amount":1409.5},{"id":"E022","date":"2026-08-18","category":"Mobile","shop":"GP recharge","amount":599},{"id":"E023","date":"2026-08-20","category":"Entertainment","shop":"Steam","amount":422},{"id":"E024","date":"2026-08-20","category":"Entertainment","shop":"Steam","amount":927},{"id":"E025","date":"2026-08-21","category":"Entertainment","shop":"Netflix","amount":503},{"id":"E026","date":"2026-08-22","category":"Mobile","shop":"GP recharge","amount":297.5},{"id":"E027","date":"2026-08-24","category":"Education","shop":"Udemy","amount":616},{"id":"E028","date":"2026-08-25","category":"Education","shop":"Bookworm","amount":1413.5},{"id":"E029","date":"2026-08-25","category":"Transport","shop":"Uber","amount":568.5},{"id":"E030","date":"2026-08-25","category":"Utilities","shop":"Titas Gas","amount":1227},{"id":"E031","date":"2026-08-28","category":"Health","shop":"Lazz Pharma","amount":328},{"id":"E032","date":"2026-09-01","category":"Entertainment","shop":"Netflix","amount":1027},{"id":"E033","date":"2026-09-02","category":"Education","shop":"Udemy","amount":1787},{"id":"E034","date":"2026-09-02","category":"Entertainment","shop":"Netflix","amount":1094.5},{"id":"E035","date":"2026-09-04","category":"Rent","shop":"Landlord","amount":23000},{"id":"E036","date":"2026-09-06","category":"Clothing","shop":"Cats Eye","amount":2740.5},{"id":"E037","date":"2026-09-07","category":"Education","shop":"Bookworm","amount":762},{"id":"E038","date":"2026-09-07","category":"Entertainment","shop":"Star Cineplex","amount":1385},{"id":"E039","date":"2026-09-09","category":"Clothing","shop":"Cats Eye","amount":2960},{"id":"E040","date":"2026-09-10","category":"Education","shop":"Bookworm","amount":1757},{"id":"E041","date":"2026-09-10","category":"Education","shop":"Bookworm","amount":555}],"pockets":[{"id":"SP-1","name":"Phone","item":"Pixel 9a","target":65000,"contribution":6000},{"id":"SP-2","name":"Laptop","item":"MacBook Air M4","target":145000,"contribution":12000},{"id":"SP-3","name":"Bike","item":"Honda Livo","target":150000,"contribution":9000}],"dpsRate":10},{"id":"PUB-18","today":"2026-08-24","monthLast":"2026-07","monthThis":"2026-08","salary":60000,"expenses":[{"id":"E001","date":"2026-07-02","category":"Entertainment","shop":"Netflix","amount":278},{"id":"E002","date":"2026-07-05","category":"Education","shop":"Udemy","amount":2786.5},{"id":"E003","date":"2026-07-05","category":"Groceries","shop":"Unimart","amount":1416.5},{"id":"E004","date":"2026-07-05","category":"Rent","shop":"Landlord","amount":17000},{"id":"E005","date":"2026-07-06","category":"Entertainment","shop":"Netflix","amount":943},{"id":"E006","date":"2026-07-06","category":"Utilities","shop":"DESCO","amount":1498},{"id":"E007","date":"2026-07-07","category":"Health","shop":"Popular Diagnostic","amount":552.5},{"id":"E008","date":"2026-07-07","category":"Mobile","shop":"Robi recharge","amount":743},{"id":"E009","date":"2026-07-09","category":"Groceries","shop":"Meena Bazar","amount":424},{"id":"E010","date":"2026-07-11","category":"Groceries","shop":"Meena Bazar","amount":534},{"id":"E011","date":"2026-07-12","category":"Education","shop":"Udemy","amount":2485},{"id":"E012","date":"2026-07-12","category":"Utilities","shop":"Titas Gas","amount":1490},{"id":"E013","date":"2026-07-13","category":"Food","shop":"Chillox","amount":559.5},{"id":"E014","date":"2026-07-13","category":"Food","shop":"Chillox","amount":746},{"id":"E015","date":"2026-07-13","category":"Utilities","shop":"Dhaka WASA","amount":1615.5},{"id":"E016","date":"2026-07-16","category":"Health","shop":"Popular Diagnostic","amount":2009},{"id":"E017","date":"2026-07-17","category":"Health","shop":"Lazz Pharma","amount":1089},{"id":"E018","date":"2026-07-19","category":"Clothing","shop":"Yellow","amount":1968},{"id":"E019","date":"2026-07-19","category":"Food","shop":"Madchef","amount":210},{"id":"E020","date":"2026-07-20","category":"Transport","shop":"BRTC bus","amount":569},{"id":"E021","date":"2026-07-21","category":"Entertainment","shop":"Star Cineplex","amount":1055},{"id":"E022","date":"2026-07-23","category":"Clothing","shop":"Cats Eye","amount":2578.5},{"id":"E023","date":"2026-07-23","category":"Education","shop":"Bookworm","amount":2381},{"id":"E024","date":"2026-07-24","category":"Groceries","shop":"Meena Bazar","amount":3118.5},{"id":"E025","date":"2026-07-24","category":"Health","shop":"Popular Diagnostic","amount":377},{"id":"E026","date":"2026-07-26","category":"Transport","shop":"CNG","amount":314},{"id":"E027","date":"2026-07-26","category":"Transport","shop":"Pathao","amount":316},{"id":"E028","date":"2026-07-27","category":"Transport","shop":"CNG","amount":428.5},{"id":"E029","date":"2026-07-28","category":"Health","shop":"Lazz Pharma","amount":1686},{"id":"E030","date":"2026-07-29","category":"Entertainment","shop":"Steam","amount":1315},{"id":"E031","date":"2026-08-01","category":"Clothing","shop":"Aarong","amount":3864},{"id":"E032","date":"2026-08-01","category":"Clothing","shop":"Yellow","amount":1347.5},{"id":"E033","date":"2026-08-01","category":"Education","shop":"Udemy","amount":1049},{"id":"E034","date":"2026-08-01","category":"Mobile","shop":"GP recharge","amount":635},{"id":"E035","date":"2026-08-03","category":"Entertainment","shop":"Star Cineplex","amount":814},{"id":"E036","date":"2026-08-04","category":"Education","shop":"Bookworm","amount":2859},{"id":"E037","date":"2026-08-05","category":"Health","shop":"Popular Diagnostic","amount":1452},{"id":"E038","date":"2026-08-05","category":"Rent","shop":"Landlord","amount":17000},{"id":"E039","date":"2026-08-07","category":"Transport","shop":"CNG","amount":323},{"id":"E040","date":"2026-08-08","category":"Clothing","shop":"Cats Eye","amount":2037},{"id":"E041","date":"2026-08-10","category":"Entertainment","shop":"Steam","amount":1128},{"id":"E042","date":"2026-08-11","category":"Education","shop":"Bookworm","amount":2697},{"id":"E043","date":"2026-08-11","category":"Utilities","shop":"Titas Gas","amount":1739},{"id":"E044","date":"2026-08-12","category":"Food","shop":"Panda Garden","amount":821},{"id":"E045","date":"2026-08-12","category":"Mobile","shop":"bKash","amount":148.5},{"id":"E046","date":"2026-08-13","category":"Education","shop":"Udemy","amount":642},{"id":"E047","date":"2026-08-14","category":"Mobile","shop":"bKash","amount":918},{"id":"E048","date":"2026-08-16","category":"Mobile","shop":"bKash","amount":743},{"id":"E049","date":"2026-08-22","category":"Mobile","shop":"Robi recharge","amount":604.5},{"id":"E050","date":"2026-08-24","category":"Clothing","shop":"Cats Eye","amount":1217},{"id":"E051","date":"2026-08-24","category":"Entertainment","shop":"Steam","amount":888},{"id":"E052","date":"2026-08-24","category":"Food","shop":"Star Kabab","amount":818},{"id":"E053","date":"2026-08-24","category":"Utilities","shop":"DESCO","amount":1276}],"pockets":[{"id":"SP-1","name":"Trip","item":"Cox's Bazar family trip","target":45000,"contribution":5000},{"id":"SP-2","name":"Laptop","item":"MacBook Air M4","target":145000,"contribution":12000},{"id":"SP-3","name":"Wedding","item":"reception hall booking","target":300000,"contribution":20000}],"dpsRate":9},{"id":"PUB-19","today":"2026-09-18","monthLast":"2026-08","monthThis":"2026-09","salary":105000,"expenses":[{"id":"E001","date":"2026-08-01","category":"Education","shop":"Bookworm","amount":1674.5},{"id":"E002","date":"2026-08-03","category":"Education","shop":"Bookworm","amount":2064},{"id":"E003","date":"2026-08-03","category":"Rent","shop":"Landlord","amount":21000},{"id":"E004","date":"2026-08-05","category":"Utilities","shop":"Titas Gas","amount":2390},{"id":"E005","date":"2026-08-09","category":"Entertainment","shop":"Star Cineplex","amount":1281},{"id":"E006","date":"2026-08-09","category":"Entertainment","shop":"Star Cineplex","amount":522},{"id":"E007","date":"2026-08-11","category":"Clothing","shop":"Yellow","amount":2278.5},{"id":"E008","date":"2026-08-11","category":"Clothing","shop":"Yellow","amount":3893},{"id":"E009","date":"2026-08-11","category":"Utilities","shop":"DESCO","amount":2890},{"id":"E010","date":"2026-08-12","category":"Education","shop":"Udemy","amount":1473},{"id":"E011","date":"2026-08-14","category":"Food","shop":"Star Kabab","amount":899},{"id":"E012","date":"2026-08-15","category":"Utilities","shop":"Dhaka WASA","amount":1102},{"id":"E013","date":"2026-08-17","category":"Clothing","shop":"Aarong","amount":1664},{"id":"E014","date":"2026-08-17","category":"Groceries","shop":"Shwapno","amount":3019.5},{"id":"E015","date":"2026-08-18","category":"Groceries","shop":"Meena Bazar","amount":902.5},{"id":"E016","date":"2026-08-19","category":"Clothing","shop":"Aarong","amount":3416},{"id":"E017","date":"2026-08-21","category":"Clothing","shop":"Yellow","amount":2388.5},{"id":"E018","date":"2026-08-21","category":"Entertainment","shop":"Star Cineplex","amount":542},{"id":"E019","date":"2026-08-21","category":"Groceries","shop":"Meena Bazar","amount":1396.5},{"id":"E020","date":"2026-08-21","category":"Health","shop":"Popular Diagnostic","amount":1684},{"id":"E021","date":"2026-08-21","category":"Mobile","shop":"GP recharge","amount":126},{"id":"E022","date":"2026-08-22","category":"Entertainment","shop":"Steam","amount":1011},{"id":"E023","date":"2026-08-23","category":"Mobile","shop":"Robi recharge","amount":456},{"id":"E024","date":"2026-08-24","category":"Groceries","shop":"Agora","amount":1663},{"id":"E025","date":"2026-08-25","category":"Health","shop":"Lazz Pharma","amount":501},{"id":"E026","date":"2026-08-26","category":"Groceries","shop":"Meena Bazar","amount":2695},{"id":"E027","date":"2026-08-26","category":"Health","shop":"Popular Diagnostic","amount":1162.5},{"id":"E028","date":"2026-08-28","category":"Health","shop":"Lazz Pharma","amount":1532},{"id":"E029","date":"2026-08-29","category":"Transport","shop":"Pathao","amount":340.5},{"id":"E030","date":"2026-09-01","category":"Groceries","shop":"Unimart","amount":1478},{"id":"E031","date":"2026-09-01","category":"Utilities","shop":"DESCO","amount":1155},{"id":"E032","date":"2026-09-03","category":"Rent","shop":"Landlord","amount":21000},{"id":"E033","date":"2026-09-04","category":"Clothing","shop":"Aarong","amount":3582},{"id":"E034","date":"2026-09-06","category":"Utilities","shop":"DESCO","amount":2941.5},{"id":"E035","date":"2026-09-07","category":"Clothing","shop":"Aarong","amount":3509},{"id":"E036","date":"2026-09-07","category":"Entertainment","shop":"Star Cineplex","amount":371},{"id":"E037","date":"2026-09-07","category":"Food","shop":"Panda Garden","amount":826},{"id":"E038","date":"2026-09-07","category":"Groceries","shop":"Shwapno","amount":1158},{"id":"E039","date":"2026-09-07","category":"Mobile","shop":"bKash","amount":870},{"id":"E040","date":"2026-09-09","category":"Education","shop":"Udemy","amount":2155},{"id":"E041","date":"2026-09-10","category":"Entertainment","shop":"Steam","amount":440.5},{"id":"E042","date":"2026-09-11","category":"Health","shop":"Popular Diagnostic","amount":1624},{"id":"E043","date":"2026-09-12","category":"Clothing","shop":"Aarong","amount":1972.5},{"id":"E044","date":"2026-09-13","category":"Utilities","shop":"Dhaka WASA","amount":1536},{"id":"E045","date":"2026-09-14","category":"Food","shop":"Madchef","amount":407.5},{"id":"E046","date":"2026-09-15","category":"Education","shop":"Bookworm","amount":2424},{"id":"E047","date":"2026-09-18","category":"Entertainment","shop":"Steam","amount":916}],"pockets":[{"id":"SP-1","name":"Bike","item":"Honda Livo","target":150000,"contribution":9000},{"id":"SP-2","name":"Phone","item":"Pixel 9a","target":65000,"contribution":6000},{"id":"SP-3","name":"Trip","item":"Cox's Bazar family trip","target":45000,"contribution":5000}],"dpsRate":9},{"id":"PUB-20","today":"2026-04-23","monthLast":"2026-03","monthThis":"2026-04","salary":100000,"expenses":[{"id":"E001","date":"2026-03-01","category":"Food","shop":"Madchef","amount":212},{"id":"E002","date":"2026-03-03","category":"Entertainment","shop":"Netflix","amount":568},{"id":"E003","date":"2026-03-03","category":"Food","shop":"Panda Garden","amount":623},{"id":"E004","date":"2026-03-03","category":"Health","shop":"Lazz Pharma","amount":1987.5},{"id":"E005","date":"2026-03-04","category":"Entertainment","shop":"Star Cineplex","amount":1480.5},{"id":"E006","date":"2026-03-04","category":"Groceries","shop":"Meena Bazar","amount":2020},{"id":"E007","date":"2026-03-04","category":"Rent","shop":"Landlord","amount":21000},{"id":"E008","date":"2026-03-04","category":"Transport","shop":"Pathao","amount":418},{"id":"E009","date":"2026-03-05","category":"Education","shop":"Bookworm","amount":921},{"id":"E010","date":"2026-03-05","category":"Health","shop":"Popular Diagnostic","amount":1899.5},{"id":"E011","date":"2026-03-06","category":"Food","shop":"Madchef","amount":157},{"id":"E012","date":"2026-03-06","category":"Groceries","shop":"Agora","amount":2580},{"id":"E013","date":"2026-03-07","category":"Food","shop":"Star Kabab","amount":244.5},{"id":"E014","date":"2026-03-08","category":"Transport","shop":"BRTC bus","amount":600.5},{"id":"E015","date":"2026-03-09","category":"Education","shop":"Bookworm","amount":2779},{"id":"E016","date":"2026-03-11","category":"Entertainment","shop":"Star Cineplex","amount":813},{"id":"E017","date":"2026-03-11","category":"Entertainment","shop":"Steam","amount":336.5},{"id":"E018","date":"2026-03-14","category":"Education","shop":"Udemy","amount":672},{"id":"E019","date":"2026-03-14","category":"Groceries","shop":"Meena Bazar","amount":1521},{"id":"E020","date":"2026-03-14","category":"Mobile","shop":"bKash","amount":722},{"id":"E021","date":"2026-03-18","category":"Clothing","shop":"Aarong","amount":1083.5},{"id":"E022","date":"2026-03-18","category":"Clothing","shop":"Yellow","amount":2181},{"id":"E023","date":"2026-03-18","category":"Entertainment","shop":"Star Cineplex","amount":776.5},{"id":"E024","date":"2026-03-19","category":"Mobile","shop":"bKash","amount":453},{"id":"E025","date":"2026-03-23","category":"Utilities","shop":"DESCO","amount":1541},{"id":"E026","date":"2026-03-24","category":"Clothing","shop":"Yellow","amount":3494},{"id":"E027","date":"2026-03-24","category":"Groceries","shop":"Shwapno","amount":1118},{"id":"E028","date":"2026-03-26","category":"Groceries","shop":"Shwapno","amount":1261.5},{"id":"E029","date":"2026-03-26","category":"Health","shop":"Lazz Pharma","amount":377},{"id":"E030","date":"2026-03-27","category":"Entertainment","shop":"Netflix","amount":1337},{"id":"E031","date":"2026-03-28","category":"Utilities","shop":"DESCO","amount":1785},{"id":"E032","date":"2026-03-28","category":"Utilities","shop":"Titas Gas","amount":2760},{"id":"E033","date":"2026-03-30","category":"Food","shop":"Panda Garden","amount":683},{"id":"E034","date":"2026-04-01","category":"Rent","shop":"Landlord","amount":21000},{"id":"E035","date":"2026-04-01","category":"Transport","shop":"BRTC bus","amount":148.5},{"id":"E036","date":"2026-04-02","category":"Clothing","shop":"Cats Eye","amount":2011},{"id":"E037","date":"2026-04-02","category":"Health","shop":"Lazz Pharma","amount":649},{"id":"E038","date":"2026-04-02","category":"Transport","shop":"BRTC bus","amount":281},{"id":"E039","date":"2026-04-04","category":"Entertainment","shop":"Netflix","amount":993},{"id":"E040","date":"2026-04-06","category":"Education","shop":"Udemy","amount":2064},{"id":"E041","date":"2026-04-08","category":"Clothing","shop":"Cats Eye","amount":1193},{"id":"E042","date":"2026-04-08","category":"Groceries","shop":"Shwapno","amount":2785.5},{"id":"E043","date":"2026-04-09","category":"Health","shop":"Lazz Pharma","amount":779.5},{"id":"E044","date":"2026-04-10","category":"Clothing","shop":"Aarong","amount":1640},{"id":"E045","date":"2026-04-10","category":"Groceries","shop":"Meena Bazar","amount":3231},{"id":"E046","date":"2026-04-11","category":"Entertainment","shop":"Star Cineplex","amount":1412},{"id":"E047","date":"2026-04-11","category":"Transport","shop":"Uber","amount":66},{"id":"E048","date":"2026-04-12","category":"Utilities","shop":"Titas Gas","amount":1256},{"id":"E049","date":"2026-04-13","category":"Groceries","shop":"Meena Bazar","amount":2993},{"id":"E050","date":"2026-04-15","category":"Entertainment","shop":"Steam","amount":558.5},{"id":"E051","date":"2026-04-16","category":"Food","shop":"Chillox","amount":476},{"id":"E052","date":"2026-04-16","category":"Utilities","shop":"DESCO","amount":2220},{"id":"E053","date":"2026-04-17","category":"Health","shop":"Lazz Pharma","amount":743},{"id":"E054","date":"2026-04-18","category":"Transport","shop":"Uber","amount":499.5},{"id":"E055","date":"2026-04-19","category":"Groceries","shop":"Shwapno","amount":2973},{"id":"E056","date":"2026-04-19","category":"Utilities","shop":"Dhaka WASA","amount":1407.5},{"id":"E057","date":"2026-04-21","category":"Food","shop":"Star Kabab","amount":778},{"id":"E058","date":"2026-04-22","category":"Education","shop":"Udemy","amount":2406.5},{"id":"E059","date":"2026-04-22","category":"Transport","shop":"CNG","amount":593}],"pockets":[{"id":"SP-1","name":"Flat deposit","item":"2 bed Mirpur advance","target":200000,"contribution":15000},{"id":"SP-2","name":"Bike","item":"Honda Livo","target":150000,"contribution":9000},{"id":"SP-3","name":"Trip","item":"Cox's Bazar family trip","target":45000,"contribution":5000}],"dpsRate":10},{"id":"PUB-21","today":"2026-09-20","monthLast":"2026-08","monthThis":"2026-09","salary":115000,"expenses":[{"id":"E001","date":"2026-08-01","category":"Rent","shop":"Landlord","amount":25000},{"id":"E002","date":"2026-08-01","category":"Transport","shop":"BRTC bus","amount":379},{"id":"E003","date":"2026-08-03","category":"Transport","shop":"Pathao","amount":487.5},{"id":"E004","date":"2026-08-04","category":"Entertainment","shop":"Netflix","amount":1392.5},{"id":"E005","date":"2026-08-04","category":"Entertainment","shop":"Netflix","amount":292},{"id":"E006","date":"2026-08-04","category":"Utilities","shop":"Dhaka WASA","amount":2305},{"id":"E007","date":"2026-08-07","category":"Transport","shop":"Uber","amount":398},{"id":"E008","date":"2026-08-10","category":"Mobile","shop":"GP recharge","amount":362.5},{"id":"E009","date":"2026-08-12","category":"Entertainment","shop":"Star Cineplex","amount":778},{"id":"E010","date":"2026-08-12","category":"Health","shop":"Popular Diagnostic","amount":1850},{"id":"E011","date":"2026-08-12","category":"Mobile","shop":"bKash","amount":331.5},{"id":"E012","date":"2026-08-12","category":"Transport","shop":"Pathao","amount":150},{"id":"E013","date":"2026-08-13","category":"Clothing","shop":"Aarong","amount":2713.5},{"id":"E014","date":"2026-08-13","category":"Transport","shop":"Uber","amount":458.5},{"id":"E015","date":"2026-08-14","category":"Mobile","shop":"Robi recharge","amount":177},{"id":"E016","date":"2026-08-15","category":"Health","shop":"Popular Diagnostic","amount":967.5},{"id":"E017","date":"2026-08-17","category":"Clothing","shop":"Cats Eye","amount":3832.5},{"id":"E018","date":"2026-08-20","category":"Utilities","shop":"Dhaka WASA","amount":2267.5},{"id":"E019","date":"2026-08-21","category":"Clothing","shop":"Yellow","amount":2889},{"id":"E020","date":"2026-08-21","category":"Food","shop":"Star Kabab","amount":172},{"id":"E021","date":"2026-08-21","category":"Health","shop":"Lazz Pharma","amount":839},{"id":"E022","date":"2026-08-22","category":"Mobile","shop":"GP recharge","amount":716},{"id":"E023","date":"2026-08-23","category":"Food","shop":"Chillox","amount":789},{"id":"E024","date":"2026-08-24","category":"Clothing","shop":"Aarong","amount":2132},{"id":"E025","date":"2026-08-24","category":"Health","shop":"Popular Diagnostic","amount":1739},{"id":"E026","date":"2026-08-25","category":"Education","shop":"Udemy","amount":883},{"id":"E027","date":"2026-08-26","category":"Education","shop":"Udemy","amount":1615.5},{"id":"E028","date":"2026-08-28","category":"Transport","shop":"BRTC bus","amount":438},{"id":"E029","date":"2026-08-29","category":"Education","shop":"Bookworm","amount":1157},{"id":"E030","date":"2026-08-29","category":"Entertainment","shop":"Steam","amount":844.5},{"id":"E031","date":"2026-08-30","category":"Clothing","shop":"Aarong","amount":3198},{"id":"E032","date":"2026-08-30","category":"Health","shop":"Popular Diagnostic","amount":524.5},{"id":"E033","date":"2026-09-02","category":"Clothing","shop":"Cats Eye","amount":1508},{"id":"E034","date":"2026-09-02","category":"Groceries","shop":"Agora","amount":3045},{"id":"E035","date":"2026-09-04","category":"Health","shop":"Popular Diagnostic","amount":2206},{"id":"E036","date":"2026-09-04","category":"Rent","shop":"Landlord","amount":25000},{"id":"E037","date":"2026-09-05","category":"Utilities","shop":"Dhaka WASA","amount":2102},{"id":"E038","date":"2026-09-06","category":"Utilities","shop":"Dhaka WASA","amount":2165},{"id":"E039","date":"2026-09-07","category":"Groceries","shop":"Unimart","amount":779},{"id":"E040","date":"2026-09-08","category":"Entertainment","shop":"Netflix","amount":513},{"id":"E041","date":"2026-09-08","category":"Food","shop":"Panda Garden","amount":573},{"id":"E042","date":"2026-09-10","category":"Education","shop":"Udemy","amount":841.5},{"id":"E043","date":"2026-09-10","category":"Transport","shop":"BRTC bus","amount":261.5},{"id":"E044","date":"2026-09-10","category":"Utilities","shop":"Titas Gas","amount":1917},{"id":"E045","date":"2026-09-11","category":"Food","shop":"Panda Garden","amount":348},{"id":"E046","date":"2026-09-12","category":"Groceries","shop":"Agora","amount":2281},{"id":"E047","date":"2026-09-13","category":"Clothing","shop":"Aarong","amount":2832},{"id":"E048","date":"2026-09-13","category":"Transport","shop":"BRTC bus","amount":457},{"id":"E049","date":"2026-09-15","category":"Education","shop":"Bookworm","amount":1564},{"id":"E050","date":"2026-09-15","category":"Mobile","shop":"Robi recharge","amount":855},{"id":"E051","date":"2026-09-17","category":"Transport","shop":"BRTC bus","amount":396},{"id":"E052","date":"2026-09-17","category":"Utilities","shop":"Titas Gas","amount":845},{"id":"E053","date":"2026-09-18","category":"Health","shop":"Popular Diagnostic","amount":225},{"id":"E054","date":"2026-09-19","category":"Groceries","shop":"Shwapno","amount":1512}],"pockets":[{"id":"SP-1","name":"Phone","item":"Pixel 9a","target":65000,"contribution":6000},{"id":"SP-2","name":"Flat deposit","item":"2 bed Mirpur advance","target":200000,"contribution":15000},{"id":"SP-3","name":"Trip","item":"Cox's Bazar family trip","target":45000,"contribution":5000}],"dpsRate":8},{"id":"PUB-22","today":"2026-09-16","monthLast":"2026-08","monthThis":"2026-09","salary":65000,"expenses":[{"id":"E001","date":"2026-08-01","category":"Clothing","shop":"Yellow","amount":1259},{"id":"E002","date":"2026-08-02","category":"Rent","shop":"Landlord","amount":12000},{"id":"E003","date":"2026-08-03","category":"Groceries","shop":"Meena Bazar","amount":2504.5},{"id":"E004","date":"2026-08-04","category":"Education","shop":"Bookworm","amount":2156.5},{"id":"E005","date":"2026-08-04","category":"Groceries","shop":"Meena Bazar","amount":2054},{"id":"E006","date":"2026-08-07","category":"Groceries","shop":"Unimart","amount":3319},{"id":"E007","date":"2026-08-07","category":"Utilities","shop":"DESCO","amount":1968},{"id":"E008","date":"2026-08-08","category":"Utilities","shop":"Dhaka WASA","amount":1509},{"id":"E009","date":"2026-08-09","category":"Clothing","shop":"Cats Eye","amount":1840.5},{"id":"E010","date":"2026-08-11","category":"Food","shop":"Chillox","amount":581},{"id":"E011","date":"2026-08-12","category":"Mobile","shop":"Robi recharge","amount":968.5},{"id":"E012","date":"2026-08-14","category":"Transport","shop":"Pathao","amount":366},{"id":"E013","date":"2026-08-15","category":"Clothing","shop":"Aarong","amount":3265},{"id":"E014","date":"2026-08-15","category":"Clothing","shop":"Cats Eye","amount":970},{"id":"E015","date":"2026-08-15","category":"Education","shop":"Bookworm","amount":1312},{"id":"E016","date":"2026-08-16","category":"Education","shop":"Bookworm","amount":2342.5},{"id":"E017","date":"2026-08-16","category":"Groceries","shop":"Agora","amount":2619},{"id":"E018","date":"2026-08-17","category":"Education","shop":"Bookworm","amount":2461},{"id":"E019","date":"2026-08-17","category":"Food","shop":"Panda Garden","amount":274.5},{"id":"E020","date":"2026-08-19","category":"Utilities","shop":"Dhaka WASA","amount":979},{"id":"E021","date":"2026-08-20","category":"Clothing","shop":"Cats Eye","amount":975.5},{"id":"E022","date":"2026-08-22","category":"Groceries","shop":"Shwapno","amount":1037},{"id":"E023","date":"2026-08-22","category":"Utilities","shop":"DESCO","amount":2793.5},{"id":"E024","date":"2026-08-23","category":"Food","shop":"Panda Garden","amount":322},{"id":"E025","date":"2026-08-24","category":"Education","shop":"Udemy","amount":2419},{"id":"E026","date":"2026-08-26","category":"Education","shop":"Bookworm","amount":1805},{"id":"E027","date":"2026-08-26","category":"Groceries","shop":"Meena Bazar","amount":3385.5},{"id":"E028","date":"2026-08-28","category":"Clothing","shop":"Aarong","amount":1099},{"id":"E029","date":"2026-08-28","category":"Health","shop":"Lazz Pharma","amount":769},{"id":"E030","date":"2026-08-29","category":"Transport","shop":"Uber","amount":106.5},{"id":"E031","date":"2026-09-01","category":"Rent","shop":"Landlord","amount":12000},{"id":"E032","date":"2026-09-02","category":"Groceries","shop":"Unimart","amount":1997},{"id":"E033","date":"2026-09-03","category":"Food","shop":"Sultans Dine","amount":322},{"id":"E034","date":"2026-09-03","category":"Groceries","shop":"Unimart","amount":715.5},{"id":"E035","date":"2026-09-03","category":"Transport","shop":"CNG","amount":212},{"id":"E036","date":"2026-09-04","category":"Health","shop":"Lazz Pharma","amount":419},{"id":"E037","date":"2026-09-05","category":"Entertainment","shop":"Steam","amount":1012},{"id":"E038","date":"2026-09-05","category":"Mobile","shop":"bKash","amount":380},{"id":"E039","date":"2026-09-07","category":"Groceries","shop":"Shwapno","amount":2136},{"id":"E040","date":"2026-09-07","category":"Mobile","shop":"Robi recharge","amount":487.5},{"id":"E041","date":"2026-09-07","category":"Utilities","shop":"DESCO","amount":1874},{"id":"E042","date":"2026-09-10","category":"Entertainment","shop":"Netflix","amount":624},{"id":"E043","date":"2026-09-10","category":"Food","shop":"Panda Garden","amount":388},{"id":"E044","date":"2026-09-11","category":"Transport","shop":"Uber","amount":164},{"id":"E045","date":"2026-09-12","category":"Food","shop":"Madchef","amount":123},{"id":"E046","date":"2026-09-15","category":"Education","shop":"Udemy","amount":2990}],"pockets":[{"id":"SP-1","name":"Flat deposit","item":"2 bed Mirpur advance","target":200000,"contribution":15000},{"id":"SP-2","name":"Bike","item":"Honda Livo","target":150000,"contribution":9000},{"id":"SP-3","name":"Trip","item":"Cox's Bazar family trip","target":45000,"contribution":5000}],"dpsRate":9},{"id":"PUB-23","today":"2026-04-24","monthLast":"2026-03","monthThis":"2026-04","salary":55000,"expenses":[{"id":"E001","date":"2026-03-01","category":"Education","shop":"Bookworm","amount":2953},{"id":"E002","date":"2026-03-01","category":"Health","shop":"Lazz Pharma","amount":1148.5},{"id":"E003","date":"2026-03-02","category":"Mobile","shop":"bKash","amount":776},{"id":"E004","date":"2026-03-02","category":"Rent","shop":"Landlord","amount":22000},{"id":"E005","date":"2026-03-03","category":"Clothing","shop":"Aarong","amount":2901},{"id":"E006","date":"2026-03-04","category":"Clothing","shop":"Cats Eye","amount":1388},{"id":"E007","date":"2026-03-05","category":"Entertainment","shop":"Star Cineplex","amount":936},{"id":"E008","date":"2026-03-05","category":"Food","shop":"Sultans Dine","amount":735.5},{"id":"E009","date":"2026-03-07","category":"Transport","shop":"Uber","amount":530.5},{"id":"E010","date":"2026-03-08","category":"Health","shop":"Popular Diagnostic","amount":1578},{"id":"E011","date":"2026-03-09","category":"Groceries","shop":"Unimart","amount":1227},{"id":"E012","date":"2026-03-10","category":"Food","shop":"Panda Garden","amount":598},{"id":"E013","date":"2026-03-10","category":"Health","shop":"Popular Diagnostic","amount":1500.5},{"id":"E014","date":"2026-03-12","category":"Mobile","shop":"bKash","amount":965},{"id":"E015","date":"2026-03-13","category":"Education","shop":"Udemy","amount":1489},{"id":"E016","date":"2026-03-16","category":"Groceries","shop":"Meena Bazar","amount":647},{"id":"E017","date":"2026-03-17","category":"Clothing","shop":"Yellow","amount":2740.5},{"id":"E018","date":"2026-03-17","category":"Education","shop":"Bookworm","amount":1964},{"id":"E019","date":"2026-03-17","category":"Groceries","shop":"Agora","amount":3150},{"id":"E020","date":"2026-03-21","category":"Utilities","shop":"Dhaka WASA","amount":1955},{"id":"E021","date":"2026-03-23","category":"Health","shop":"Lazz Pharma","amount":724},{"id":"E022","date":"2026-03-23","category":"Mobile","shop":"GP recharge","amount":862.5},{"id":"E023","date":"2026-03-23","category":"Utilities","shop":"DESCO","amount":2197},{"id":"E024","date":"2026-03-24","category":"Education","shop":"Udemy","amount":2240.5},{"id":"E025","date":"2026-03-24","category":"Groceries","shop":"Meena Bazar","amount":1736},{"id":"E026","date":"2026-03-25","category":"Mobile","shop":"Robi recharge","amount":634},{"id":"E027","date":"2026-03-26","category":"Health","shop":"Lazz Pharma","amount":432.5},{"id":"E028","date":"2026-03-30","category":"Entertainment","shop":"Netflix","amount":794},{"id":"E029","date":"2026-03-30","category":"Health","shop":"Lazz Pharma","amount":928},{"id":"E030","date":"2026-03-30","category":"Mobile","shop":"GP recharge","amount":786.5},{"id":"E031","date":"2026-03-31","category":"Groceries","shop":"Meena Bazar","amount":2971},{"id":"E032","date":"2026-03-31","category":"Mobile","shop":"Robi recharge","amount":354.5},{"id":"E033","date":"2026-04-04","category":"Entertainment","shop":"Steam","amount":604},{"id":"E034","date":"2026-04-04","category":"Rent","shop":"Landlord","amount":22000},{"id":"E035","date":"2026-04-05","category":"Education","shop":"Udemy","amount":2033},{"id":"E036","date":"2026-04-06","category":"Clothing","shop":"Yellow","amount":1448},{"id":"E037","date":"2026-04-06","category":"Mobile","shop":"bKash","amount":289},{"id":"E038","date":"2026-04-07","category":"Clothing","shop":"Aarong","amount":3845},{"id":"E039","date":"2026-04-07","category":"Transport","shop":"Pathao","amount":316},{"id":"E040","date":"2026-04-08","category":"Clothing","shop":"Aarong","amount":3478.5},{"id":"E041","date":"2026-04-09","category":"Clothing","shop":"Aarong","amount":1311.5},{"id":"E042","date":"2026-04-10","category":"Transport","shop":"BRTC bus","amount":431},{"id":"E043","date":"2026-04-11","category":"Food","shop":"Chillox","amount":569.5},{"id":"E044","date":"2026-04-12","category":"Clothing","shop":"Yellow","amount":2050},{"id":"E045","date":"2026-04-12","category":"Food","shop":"Chillox","amount":764},{"id":"E046","date":"2026-04-12","category":"Utilities","shop":"DESCO","amount":2430},{"id":"E047","date":"2026-04-12","category":"Utilities","shop":"Titas Gas","amount":1577.5},{"id":"E048","date":"2026-04-14","category":"Health","shop":"Lazz Pharma","amount":1602},{"id":"E049","date":"2026-04-15","category":"Entertainment","shop":"Steam","amount":962},{"id":"E050","date":"2026-04-16","category":"Food","shop":"Chillox","amount":485},{"id":"E051","date":"2026-04-17","category":"Food","shop":"Madchef","amount":325.5},{"id":"E052","date":"2026-04-17","category":"Utilities","shop":"Dhaka WASA","amount":2152},{"id":"E053","date":"2026-04-17","category":"Utilities","shop":"Titas Gas","amount":836},{"id":"E054","date":"2026-04-18","category":"Food","shop":"Madchef","amount":525},{"id":"E055","date":"2026-04-18","category":"Food","shop":"Sultans Dine","amount":434},{"id":"E056","date":"2026-04-20","category":"Groceries","shop":"Shwapno","amount":2980.5},{"id":"E057","date":"2026-04-21","category":"Education","shop":"Udemy","amount":1754},{"id":"E058","date":"2026-04-24","category":"Health","shop":"Popular Diagnostic","amount":2000}],"pockets":[{"id":"SP-1","name":"Wedding","item":"reception hall booking","target":300000,"contribution":20000},{"id":"SP-2","name":"Bike","item":"Honda Livo","target":150000,"contribution":9000},{"id":"SP-3","name":"Flat deposit","item":"2 bed Mirpur advance","target":200000,"contribution":15000}],"dpsRate":9},{"id":"PUB-24","today":"2026-06-16","monthLast":"2026-05","monthThis":"2026-06","salary":85000,"expenses":[{"id":"E001","date":"2026-05-03","category":"Mobile","shop":"bKash","amount":722},{"id":"E002","date":"2026-05-03","category":"Transport","shop":"Uber","amount":497.5},{"id":"E003","date":"2026-05-03","category":"Utilities","shop":"Dhaka WASA","amount":2251},{"id":"E004","date":"2026-05-04","category":"Health","shop":"Popular Diagnostic","amount":910},{"id":"E005","date":"2026-05-04","category":"Rent","shop":"Landlord","amount":23000},{"id":"E006","date":"2026-05-05","category":"Entertainment","shop":"Steam","amount":286.5},{"id":"E007","date":"2026-05-07","category":"Utilities","shop":"Titas Gas","amount":1731},{"id":"E008","date":"2026-05-08","category":"Entertainment","shop":"Steam","amount":593},{"id":"E009","date":"2026-05-08","category":"Utilities","shop":"Titas Gas","amount":2410},{"id":"E010","date":"2026-05-09","category":"Clothing","shop":"Cats Eye","amount":2482},{"id":"E011","date":"2026-05-09","category":"Entertainment","shop":"Netflix","amount":1420.5},{"id":"E012","date":"2026-05-09","category":"Utilities","shop":"Titas Gas","amount":2587},{"id":"E013","date":"2026-05-10","category":"Utilities","shop":"Dhaka WASA","amount":2888},{"id":"E014","date":"2026-05-11","category":"Entertainment","shop":"Steam","amount":881},{"id":"E015","date":"2026-05-13","category":"Food","shop":"Chillox","amount":647},{"id":"E016","date":"2026-05-14","category":"Entertainment","shop":"Star Cineplex","amount":1004},{"id":"E017","date":"2026-05-15","category":"Entertainment","shop":"Netflix","amount":1335},{"id":"E018","date":"2026-05-16","category":"Transport","shop":"Uber","amount":134.5},{"id":"E019","date":"2026-05-19","category":"Utilities","shop":"DESCO","amount":935},{"id":"E020","date":"2026-05-20","category":"Entertainment","shop":"Steam","amount":1460.5},{"id":"E021","date":"2026-05-22","category":"Clothing","shop":"Cats Eye","amount":1048},{"id":"E022","date":"2026-05-26","category":"Utilities","shop":"DESCO","amount":2791},{"id":"E023","date":"2026-05-27","category":"Education","shop":"Udemy","amount":1858},{"id":"E024","date":"2026-05-27","category":"Transport","shop":"Uber","amount":348},{"id":"E025","date":"2026-05-28","category":"Health","shop":"Popular Diagnostic","amount":1629},{"id":"E026","date":"2026-05-29","category":"Groceries","shop":"Unimart","amount":3301},{"id":"E027","date":"2026-05-29","category":"Health","shop":"Popular Diagnostic","amount":2098},{"id":"E028","date":"2026-06-01","category":"Rent","shop":"Landlord","amount":23000},{"id":"E029","date":"2026-06-01","category":"Utilities","shop":"DESCO","amount":1790.5},{"id":"E030","date":"2026-06-01","category":"Utilities","shop":"Dhaka WASA","amount":2048},{"id":"E031","date":"2026-06-06","category":"Health","shop":"Popular Diagnostic","amount":402},{"id":"E032","date":"2026-06-07","category":"Clothing","shop":"Aarong","amount":2839},{"id":"E033","date":"2026-06-07","category":"Education","shop":"Bookworm","amount":888.5},{"id":"E034","date":"2026-06-07","category":"Groceries","shop":"Unimart","amount":465},{"id":"E035","date":"2026-06-08","category":"Clothing","shop":"Yellow","amount":3440},{"id":"E036","date":"2026-06-08","category":"Groceries","shop":"Meena Bazar","amount":2749},{"id":"E037","date":"2026-06-09","category":"Mobile","shop":"GP recharge","amount":638},{"id":"E038","date":"2026-06-10","category":"Food","shop":"Madchef","amount":486},{"id":"E039","date":"2026-06-14","category":"Entertainment","shop":"Netflix","amount":315},{"id":"E040","date":"2026-06-16","category":"Education","shop":"Bookworm","amount":2340},{"id":"E041","date":"2026-06-16","category":"Utilities","shop":"DESCO","amount":2091}],"pockets":[{"id":"SP-1","name":"Flat deposit","item":"2 bed Mirpur advance","target":200000,"contribution":15000},{"id":"SP-2","name":"Bike","item":"Honda Livo","target":150000,"contribution":9000},{"id":"SP-3","name":"Phone","item":"Pixel 9a","target":65000,"contribution":6000}],"dpsRate":8.5},{"id":"PUB-25","today":"2026-09-16","monthLast":"2026-08","monthThis":"2026-09","salary":115000,"expenses":[{"id":"E001","date":"2026-08-02","category":"Mobile","shop":"GP recharge","amount":469},{"id":"E002","date":"2026-08-03","category":"Groceries","shop":"Meena Bazar","amount":3142.5},{"id":"E003","date":"2026-08-03","category":"Rent","shop":"Landlord","amount":12000},{"id":"E004","date":"2026-08-05","category":"Clothing","shop":"Aarong","amount":1229},{"id":"E005","date":"2026-08-05","category":"Utilities","shop":"Titas Gas","amount":2708},{"id":"E006","date":"2026-08-06","category":"Food","shop":"Chillox","amount":890},{"id":"E007","date":"2026-08-06","category":"Groceries","shop":"Meena Bazar","amount":1966},{"id":"E008","date":"2026-08-07","category":"Food","shop":"Sultans Dine","amount":778},{"id":"E009","date":"2026-08-10","category":"Food","shop":"Panda Garden","amount":306},{"id":"E010","date":"2026-08-10","category":"Transport","shop":"CNG","amount":460},{"id":"E011","date":"2026-08-11","category":"Mobile","shop":"GP recharge","amount":205},{"id":"E012","date":"2026-08-11","category":"Mobile","shop":"Robi recharge","amount":921},{"id":"E013","date":"2026-08-11","category":"Transport","shop":"CNG","amount":171},{"id":"E014","date":"2026-08-12","category":"Entertainment","shop":"Netflix","amount":737.5},{"id":"E015","date":"2026-08-12","category":"Utilities","shop":"DESCO","amount":1660},{"id":"E016","date":"2026-08-13","category":"Transport","shop":"Pathao","amount":530},{"id":"E017","date":"2026-08-14","category":"Clothing","shop":"Cats Eye","amount":3236},{"id":"E018","date":"2026-08-15","category":"Utilities","shop":"DESCO","amount":1275},{"id":"E019","date":"2026-08-16","category":"Health","shop":"Popular Diagnostic","amount":1147},{"id":"E020","date":"2026-08-17","category":"Clothing","shop":"Yellow","amount":3877},{"id":"E021","date":"2026-08-18","category":"Education","shop":"Bookworm","amount":2938.5},{"id":"E022","date":"2026-08-18","category":"Entertainment","shop":"Star Cineplex","amount":620.5},{"id":"E023","date":"2026-08-18","category":"Food","shop":"Sultans Dine","amount":472},{"id":"E024","date":"2026-08-22","category":"Mobile","shop":"bKash","amount":985.5},{"id":"E025","date":"2026-08-23","category":"Utilities","shop":"DESCO","amount":2895},{"id":"E026","date":"2026-08-26","category":"Education","shop":"Udemy","amount":856},{"id":"E027","date":"2026-08-26","category":"Health","shop":"Popular Diagnostic","amount":1286},{"id":"E028","date":"2026-08-27","category":"Groceries","shop":"Unimart","amount":1457},{"id":"E029","date":"2026-08-28","category":"Education","shop":"Udemy","amount":1064},{"id":"E030","date":"2026-08-28","category":"Utilities","shop":"Dhaka WASA","amount":2290},{"id":"E031","date":"2026-08-30","category":"Food","shop":"Sultans Dine","amount":195.5},{"id":"E032","date":"2026-09-01","category":"Entertainment","shop":"Steam","amount":296},{"id":"E033","date":"2026-09-01","category":"Groceries","shop":"Shwapno","amount":1810},{"id":"E034","date":"2026-09-02","category":"Health","shop":"Popular Diagnostic","amount":549},{"id":"E035","date":"2026-09-02","category":"Rent","shop":"Landlord","amount":12000},{"id":"E036","date":"2026-09-06","category":"Mobile","shop":"bKash","amount":994},{"id":"E037","date":"2026-09-07","category":"Entertainment","shop":"Star Cineplex","amount":669.5},{"id":"E038","date":"2026-09-07","category":"Food","shop":"Chillox","amount":554.5},{"id":"E039","date":"2026-09-07","category":"Groceries","shop":"Agora","amount":925.5},{"id":"E040","date":"2026-09-08","category":"Food","shop":"Panda Garden","amount":473},{"id":"E041","date":"2026-09-10","category":"Entertainment","shop":"Steam","amount":497},{"id":"E042","date":"2026-09-10","category":"Transport","shop":"CNG","amount":512},{"id":"E043","date":"2026-09-12","category":"Education","shop":"Bookworm","amount":813},{"id":"E044","date":"2026-09-13","category":"Mobile","shop":"Robi recharge","amount":990},{"id":"E045","date":"2026-09-14","category":"Health","shop":"Lazz Pharma","amount":2012},{"id":"E046","date":"2026-09-15","category":"Health","shop":"Popular Diagnostic","amount":839},{"id":"E047","date":"2026-09-15","category":"Transport","shop":"CNG","amount":310.5},{"id":"E048","date":"2026-09-16","category":"Transport","shop":"Uber","amount":218}],"pockets":[{"id":"SP-1","name":"Trip","item":"Cox's Bazar family trip","target":45000,"contribution":5000},{"id":"SP-2","name":"Phone","item":"Pixel 9a","target":65000,"contribution":6000},{"id":"SP-3","name":"Bike","item":"Honda Livo","target":150000,"contribution":9000}],"dpsRate":8}];
+
+const CATEGORIES = ["Groceries", "Rent", "Utilities", "Education", "Food", "Transport", "Health", "Mobile", "Entertainment", "Clothing", "Other"];
+
+/* ---------------- money ----------------
+   Balances are held in integer paisa so the DPS rule can be applied
+   exactly: deposit first, then interest on the new balance, rounded
+   half up to the paisa. */
+const toPaisa = n => Math.round(n * 100);
+const fromPaisa = p => p / 100;
+const halfUp = x => Math.floor(x + 0.5);
+
+function fmt(n) {
+  const v = Math.round(n);
+  const s = Math.abs(v).toLocaleString("en-BD");
+  return (v < 0 ? "-\u09F3" : "\u09F3") + s;
+}
+function fmt2(n) {
+  return "\u09F3" + n.toLocaleString("en-BD", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function daysInMonth(ym) {
+  const [y, m] = ym.split("-").map(Number);
+  return new Date(y, m, 0).getDate();
+}
+function addMonths(dateStr, months) {
+  const d = new Date(dateStr + "T00:00:00");
+  d.setMonth(d.getMonth() + months);
+  return d;
+}
+function fmtDate(d) {
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result.split(",")[1]);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+/* Accepts the published schema and returns the shape this app uses. */
+function normaliseCase(raw) {
+  return {
+    id: raw.case_id,
+    today: raw.today,
+    monthLast: raw.months.last,
+    monthThis: raw.months.this,
+    salary: parseFloat(raw.salary_bdt),
+    expenses: raw.expenses.map(e => ({
+      id: e.id, date: e.date, category: e.category, shop: e.shop, amount: parseFloat(e.amount_bdt),
+    })),
+    pockets: raw.pockets.map(p => ({
+      id: p.id, name: p.name, item: p.item,
+      target: parseFloat(p.target_bdt), contribution: parseFloat(p.monthly_contribution_bdt),
+    })),
+    dpsRate: parseFloat(raw.dps_annual_rate_percent),
+  };
+}
+
+/* ---------------- DPS simulation ----------------
+   Each month: balance += deposit, then interest = balance x rate / 12 / 100
+   rounded half up to the paisa, added to the balance so later months earn
+   on it. Contributions are scaled by the share of them the forecast surplus
+   can actually cover. */
+function simulate(pocketList, monthlySurplus, dpsRate) {
+  const surplusP = toPaisa(Math.max(0, monthlySurplus));
+  const state = pocketList.map(p => ({
+    id: p.id, name: p.name,
+    targetP: toPaisa(p.target), contribP: toPaisa(p.contribution),
+    balanceP: 0, contributedP: 0, interestP: 0, completed: false, months: null,
+  }));
+  let firstRatio = 0;
+  if (surplusP > 0) {
+    for (let m = 1; m <= 480; m++) {
+      const active = state.filter(p => !p.completed);
+      if (active.length === 0) break;
+      const desired = active.reduce((s, p) => s + p.contribP, 0);
+      const ratio = desired > 0 ? Math.min(1, surplusP / desired) : 0;
+      if (m === 1) firstRatio = ratio;
+      if (ratio <= 0) break;
+      active.forEach(p => {
+        const deposit = halfUp(p.contribP * ratio);
+        p.balanceP += deposit;
+        p.contributedP += deposit;
+        const interest = halfUp(p.balanceP * dpsRate / 12 / 100);
+        p.balanceP += interest;
+        p.interestP += interest;
+        if (p.balanceP >= p.targetP) { p.completed = true; p.months = m; }
+      });
+    }
+  }
+  return {
+    firstRatio,
+    rows: state.map(p => ({
+      id: p.id, months: p.months,
+      balance: fromPaisa(p.balanceP),
+      contributed: fromPaisa(p.contributedP),
+      interestEarned: fromPaisa(p.interestP),
+    })),
+  };
+}
+
+export default function LedgerApp() {
+  const [cases, setCases] = useState(CASES);
+  const [caseIdx, setCaseIdx] = useState(0);
+  const seed = cases[caseIdx];
+
+  const [salary, setSalary] = useState(seed.salary);
+  const [expenses, setExpenses] = useState(seed.expenses);
+  const [pockets, setPockets] = useState(seed.pockets.map(p => ({ ...p })));
+  const [dpsRate, setDpsRate] = useState(seed.dpsRate);
+  const [dates, setDates] = useState({ today: seed.today, monthLast: seed.monthLast, monthThis: seed.monthThis });
+  const { today, monthLast, monthThis } = dates;
+
+  const [tab, setTab] = useState("dashboard");
+  const [whatIfCat, setWhatIfCat] = useState("");
+  const [whatIfPct, setWhatIfPct] = useState(0);
+  const [loadNote, setLoadNote] = useState("");
+
+  function applyCase(c, list, idx) {
+    setCases(list);
+    setCaseIdx(idx);
+    setSalary(c.salary);
+    setExpenses(c.expenses);
+    setPockets(c.pockets.map(p => ({ ...p })));
+    setDpsRate(c.dpsRate);
+    setDates({ today: c.today, monthLast: c.monthLast, monthThis: c.monthThis });
+    setForm(f => ({ ...f, date: c.today }));
+    setWhatIfCat("");
+    setWhatIfPct(0);
+    setTab("dashboard");
+  }
+  function loadCase(idx) {
+    applyCase(cases[idx], cases, idx);
+  }
+
+  /* ---------- load a case file in the published schema ---------- */
+  const caseFileRef = useRef(null);
+  async function handleCaseFile(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    try {
+      const parsed = JSON.parse(await file.text());
+      const raw = Array.isArray(parsed) ? parsed : parsed.cases;
+      if (!raw || !raw.length) throw new Error("no cases");
+      const list = raw.map(normaliseCase);
+      applyCase(list[0], list, 0);
+      setLoadNote("Loaded " + list.length + " case" + (list.length > 1 ? "s" : "") + " from " + file.name + ".");
+    } catch (err) {
+      setLoadNote("That file didn't match the case schema. Expecting an object with a \u201Ccases\u201D array.");
+    }
+    if (caseFileRef.current) caseFileRef.current.value = "";
+  }
+
+  /* ---------- manual entry ---------- */
+  const [form, setForm] = useState({ date: seed.today, category: "Groceries", shop: "", amount: "" });
+  function addExpense(e) {
+    e.preventDefault();
+    if (!form.shop || !form.amount) return;
+    const id = "M" + Math.random().toString(36).slice(2, 8);
+    setExpenses(prev => [...prev, { id, date: form.date, category: form.category, shop: form.shop, amount: parseFloat(form.amount) }]);
+    setForm({ date: today, category: form.category, shop: "", amount: "" });
+  }
+
+  /* ---------- receipt reading ---------- */
+  const fileRef = useRef(null);
+  const [ocrState, setOcrState] = useState("idle");
+  const [ocrDraft, setOcrDraft] = useState(null);
+
+  async function handlePhoto(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    setOcrState("loading");
+    try {
+      const b64 = await fileToBase64(file);
+      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 1000,
+          messages: [{
+            role: "user",
+            content: [
+              { type: "image", source: { type: "base64", media_type: file.type || "image/jpeg", data: b64 } },
+              { type: "text", text: "This is a photo of a bill or receipt from Bangladesh. Extract: total amount paid (a number in BDT, no currency symbol), the transaction date (YYYY-MM-DD; if the year is missing assume 2026), and the shop or merchant name. Respond with ONLY raw JSON, no markdown fences and no preamble, in exactly this shape: {\"amount\": number or null, \"date\": string or null, \"shop\": string or null, \"confidence\": {\"amount\": \"high\" or \"low\", \"date\": \"high\" or \"low\", \"shop\": \"high\" or \"low\"}}. Set a field to null with confidence \"low\" if you are not clearly sure of it. Never guess a number you cannot actually read." }
+            ]
+          }]
+        })
+      });
+      const data = await resp.json();
+      const textBlock = (data.content || []).find(b => b.type === "text");
+      const raw = (textBlock ? textBlock.text : "{}").replace(/```json|```/g, "").trim();
+      const parsed = JSON.parse(raw);
+      const conf = parsed.confidence || {};
+      setOcrDraft({
+        amount: parsed.amount ?? "",
+        date: parsed.date || "",
+        shop: parsed.shop || "",
+        category: "Groceries",
+        confidence: {
+          amount: parsed.amount == null ? "low" : (conf.amount || "low"),
+          date: parsed.date == null ? "low" : (conf.date || "low"),
+          shop: parsed.shop == null ? "low" : (conf.shop || "low"),
+        },
+      });
+      setOcrState("review");
+    } catch (err) {
+      setOcrState("error");
+    }
+  }
+  function saveOcrExpense() {
+    if (!ocrDraft.shop || !ocrDraft.amount || !ocrDraft.date) return;
+    const id = "R" + Math.random().toString(36).slice(2, 8);
+    setExpenses(prev => [...prev, { id, date: ocrDraft.date, category: ocrDraft.category, shop: ocrDraft.shop, amount: parseFloat(ocrDraft.amount) }]);
+    cancelOcr();
+  }
+  function cancelOcr() {
+    setOcrState("idle");
+    setOcrDraft(null);
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
+  /* ---------- recurring detection ----------
+     Same shop, amount within 15%, appearing in both months. Each last-month
+     charge can only anchor one match, so two coffees this month don't both
+     bind to a single one last month. */
+  const recurringIds = useMemo(() => {
+    const last = expenses.filter(e => e.date.startsWith(monthLast));
+    const thisM = expenses.filter(e => e.date.startsWith(monthThis));
+    const used = new Set();
+    const ids = new Set();
+    thisM.forEach(te => {
+      const match = last.find(le => !used.has(le.id) && le.shop === te.shop && Math.abs(le.amount - te.amount) <= 0.15 * Math.max(le.amount, te.amount));
+      if (match) { ids.add(te.id); used.add(match.id); }
+    });
+    return ids;
+  }, [expenses, monthLast, monthThis]);
+
+  /* ---------- dashboard ---------- */
+  const dash = useMemo(() => {
+    const thisM = expenses.filter(e => e.date.startsWith(monthThis));
+    const lastM = expenses.filter(e => e.date.startsWith(monthLast));
+    const totalThis = thisM.reduce((s, e) => s + e.amount, 0);
+    const totalLast = lastM.reduce((s, e) => s + e.amount, 0);
+    const byCat = {};
+    thisM.forEach(e => {
+      byCat[e.category] = byCat[e.category] || { total: 0, shops: {} };
+      byCat[e.category].total += e.amount;
+      byCat[e.category].shops[e.shop] = (byCat[e.category].shops[e.shop] || 0) + e.amount;
+    });
+    const catLast = {};
+    lastM.forEach(e => { catLast[e.category] = (catLast[e.category] || 0) + e.amount; });
+    const catArr = Object.entries(byCat).map(([cat, v]) => {
+      const topShop = Object.entries(v.shops).sort((a, b) => b[1] - a[1])[0];
+      return { cat, total: v.total, topShop: topShop ? topShop[0] : "", lastTotal: catLast[cat] || 0 };
+    }).sort((a, b) => b.total - a.total);
+    const largest = [...thisM].sort((a, b) => b.amount - a.amount).slice(0, 5);
+    return { thisM, lastM, totalThis, totalLast, catArr, largest };
+  }, [expenses, monthThis, monthLast]);
+
+  /* ---------- forecast ----------
+     Charges already matched as recurring have been paid for the month, so
+     they are carried at face value rather than extrapolated. Only variable
+     spending is projected forward at its daily rate. Without this, a salary
+     paid on the 3rd gets charged rent again for every remaining day. */
+  const forecast = useMemo(() => {
+    const dim = daysInMonth(monthThis);
+    const elapsed = Math.max(1, new Date(today + "T00:00:00").getDate());
+    const remaining = Math.max(0, dim - elapsed);
+
+    const varByCat = {};
+    let fixedPaid = 0;
+    dash.thisM.forEach(e => {
+      if (recurringIds.has(e.id)) fixedPaid += e.amount;
+      else varByCat[e.category] = (varByCat[e.category] || 0) + e.amount;
+    });
+    const variableSoFar = dash.totalThis - fixedPaid;
+
+    let projectedRemaining = 0;
+    const perCat = [];
+    Object.entries(varByCat).forEach(([cat, total]) => {
+      const cut = whatIfCat === cat ? whatIfPct / 100 : 0;
+      const amount = (total / elapsed) * remaining * (1 - cut);
+      projectedRemaining += amount;
+      perCat.push({ cat, amount });
+    });
+    perCat.sort((a, b) => b.amount - a.amount);
+
+    const projectedTotal = dash.totalThis + projectedRemaining;
+    const projectedEnd = salary - projectedTotal;
+    const variableDaily = variableSoFar / elapsed;
+
+    return {
+      dim, elapsed, remaining, fixedPaid, variableSoFar, variableDaily,
+      projectedRemaining, projectedTotal, projectedEnd, perCat,
+      monthlySurplus: projectedEnd,
+    };
+  }, [dash, recurringIds, salary, monthThis, today, whatIfCat, whatIfPct]);
+
+  const totalDesired = pockets.reduce((s, p) => s + p.contribution, 0);
+  const sim = useMemo(() => simulate(pockets, forecast.monthlySurplus, dpsRate), [pockets, forecast.monthlySurplus, dpsRate]);
+
+  /* ---------- insights ---------- */
+  const insights = useMemo(() => {
+    const list = [];
+    const risers = dash.catArr
+      .map(c => ({ ...c, delta: c.total - c.lastTotal }))
+      .filter(c => c.lastTotal > 0 && c.delta > 0)
+      .sort((a, b) => b.delta - a.delta);
+    if (risers[0]) {
+      const d = risers[0];
+      list.push({ icon: "up", text: d.cat + " is up " + fmt(d.delta) + " on last month, from " + fmt(d.lastTotal) + " to " + fmt(d.total) + " \u2014 the biggest increase of any category." });
+    }
+    if (dash.catArr[0]) {
+      const c = dash.catArr[0];
+      const share = dash.totalThis > 0 ? Math.round((c.total / dash.totalThis) * 100) : 0;
+      list.push({ icon: "top", text: c.cat + " is the biggest cost this month at " + fmt(c.total) + ", " + share + "% of everything spent so far, led by " + c.topShop + "." });
+    }
+    if (forecast.perCat[0] && forecast.remaining > 0) {
+      const p = forecast.perCat[0];
+      list.push({ icon: "cal", text: "Over the last " + forecast.remaining + " days of the month, " + p.cat + " is set to take another " + fmt(p.amount) + " at the current daily pace." });
+    }
+    const recurCount = dash.thisM.filter(e => recurringIds.has(e.id)).length;
+    if (recurCount > 0) {
+      list.push({ icon: "recur", text: recurCount + " charge" + (recurCount > 1 ? "s" : "") + " repeated from last month at a similar amount, worth " + fmt(forecast.fixedPaid) + ". They are already paid, so they are not projected forward again." });
+    }
+    if (forecast.projectedEnd < 0) {
+      list.push({ icon: "warn", text: "Variable spending is running at " + fmt(forecast.variableDaily) + " a day. Carried to month end that overshoots salary by " + fmt(Math.abs(forecast.projectedEnd)) + "." });
+    } else {
+      list.push({ icon: "ok", text: "Total spending should land near " + fmt(forecast.projectedTotal) + ", leaving " + fmt(forecast.projectedEnd) + " of the " + fmt(salary) + " salary." });
+    }
+    if (totalDesired > 0) {
+      if (forecast.monthlySurplus <= 0) {
+        list.push({ icon: "pocket", text: "Nothing is left over for the pockets. They need " + fmt(totalDesired) + " a month, so spending has to come down by " + fmt(totalDesired - forecast.monthlySurplus) + " before any of them gets a date." });
+      } else if (forecast.monthlySurplus < totalDesired) {
+        list.push({ icon: "pocket", text: "The pockets ask for " + fmt(totalDesired) + " a month and the forecast frees up " + fmt(forecast.monthlySurplus) + ", so each one fills at about " + Math.round(sim.firstRatio * 100) + "% of its contribution." });
+      } else {
+        list.push({ icon: "pocket", text: "The surplus covers all three contributions (" + fmt(totalDesired) + ") with " + fmt(forecast.monthlySurplus - totalDesired) + " still unspoken for." });
+      }
+    }
+    return list.slice(0, 6);
+  }, [dash, forecast, recurringIds, totalDesired, sim, salary]);
+
+  /* ---------- pocket editing ---------- */
+  function updatePocket(id, patch) {
+    setPockets(prev => prev.map(p => p.id === id ? { ...p, ...patch } : p));
+  }
+  function removePocket(id) {
+    setPockets(prev => prev.filter(p => p.id !== id));
+  }
+  const [newPocket, setNewPocket] = useState({ name: "", item: "", target: "", contribution: "" });
+  function addPocket(e) {
+    e.preventDefault();
+    if (!newPocket.name || !newPocket.target || !newPocket.contribution) return;
+    setPockets(prev => [...prev, {
+      id: "SP-" + Math.random().toString(36).slice(2, 7),
+      name: newPocket.name,
+      item: newPocket.item || newPocket.name,
+      target: parseFloat(newPocket.target),
+      contribution: parseFloat(newPocket.contribution),
+    }]);
+    setNewPocket({ name: "", item: "", target: "", contribution: "" });
+  }
+
+  const maxCat = Math.max(1, ...dash.catArr.map(c => c.total));
+  const hasWhatIf = whatIfCat && whatIfPct > 0;
+
+  return (
+    <div style={styles.app}>
+      <style>{css}</style>
+
+      <header style={styles.header}>
+        <div style={styles.headerTop}>
+          <div>
+            <div style={styles.eyebrow}>PERSONAL LEDGER</div>
+            <h1 style={styles.title}>Where the taka actually went</h1>
+          </div>
+          <div style={styles.caseSelect}>
+            <label style={styles.caseLabel}>Sample case</label>
+            <select value={caseIdx} onChange={e => loadCase(Number(e.target.value))} style={styles.select}>
+              {cases.map((c, i) => (
+                <option key={c.id} value={i}>{c.id} · {fmt(c.salary)}/mo</option>
+              ))}
+            </select>
+            <button onClick={() => caseFileRef.current && caseFileRef.current.click()} style={styles.ghostBtn}>
+              <FileJson size={13} /> Load case file
+            </button>
+            <input ref={caseFileRef} type="file" accept=".json,application/json" onChange={handleCaseFile} style={{ display: "none" }} />
+          </div>
+        </div>
+
+        <div style={styles.headerMeta}>
+          <span style={styles.salaryWrap}>
+            Monthly salary
+            <span style={styles.taka}>৳</span>
+            <input
+              type="number" value={salary} min="0" step="500"
+              onChange={e => setSalary(Math.max(0, Number(e.target.value)))}
+              style={styles.salaryInput}
+            />
+          </span>
+          <span style={styles.dot}>·</span>
+          <span>Today <b>{fmtDate(new Date(today + "T00:00:00"))}</b></span>
+          <span style={styles.dot}>·</span>
+          <span>Reviewing <b>{monthThis}</b>, day {forecast.elapsed} of {forecast.dim}</span>
+        </div>
+        {loadNote && <div style={styles.loadNote}>{loadNote}</div>}
+
+        <nav style={styles.tabs}>
+          {[["dashboard", "Dashboard"], ["add", "Add expense"], ["pockets", "Savings pockets"]].map(([key, label]) => (
+            <button key={key} onClick={() => setTab(key)} style={{ ...styles.tabBtn, ...(tab === key ? styles.tabBtnActive : {}) }}>{label}</button>
+          ))}
+        </nav>
+        <div style={styles.perforation} />
+      </header>
+
+      <main style={styles.main}>
+        {tab === "dashboard" && (
+          <div>
+            <div style={styles.cardGrid}>
+              <StatCard label="Spent so far" value={fmt(dash.totalThis)} sub={"of " + fmt(salary) + " salary"} tone="ink" />
+              <StatCard label="Still to come" value={fmt(forecast.projectedRemaining)} sub={forecast.remaining + " days left at current pace"} tone="ink" />
+              <StatCard
+                label="Change on last month"
+                value={(dash.totalThis - dash.totalLast >= 0 ? "+" : "") + fmt(dash.totalThis - dash.totalLast)}
+                sub={dash.totalLast > 0 ? Math.round(((dash.totalThis - dash.totalLast) / dash.totalLast) * 100) + "% versus " + monthLast : "no data for " + monthLast}
+                tone={dash.totalThis - dash.totalLast > 0 ? "warn" : "gold"}
+                icon={dash.totalThis - dash.totalLast > 0 ? "up" : "down"}
+              />
+              <StatCard
+                label={forecast.projectedEnd >= 0 ? "Left at month end" : "Short at month end"}
+                value={fmt(Math.abs(forecast.projectedEnd))}
+                sub={"on projected spend of " + fmt(forecast.projectedTotal)}
+                tone={forecast.projectedEnd >= 0 ? "gold" : "warn"}
+              />
+            </div>
+
+            <section style={styles.section}>
+              <h2 style={styles.h2}>Where it went</h2>
+              <div style={styles.catList}>
+                {dash.catArr.map(c => {
+                  const isRecur = dash.thisM.some(e => e.category === c.cat && recurringIds.has(e.id));
+                  return (
+                    <div key={c.cat}>
+                      <div style={styles.catRowTop}>
+                        <span style={styles.catName}>
+                          {c.cat}
+                          {isRecur && <span style={styles.recurBadge}>recurring</span>}
+                        </span>
+                        <span style={styles.mono}>{fmt(c.total)}</span>
+                      </div>
+                      <div style={styles.barTrack}><div style={{ ...styles.barFill, width: (c.total / maxCat * 100) + "%" }} /></div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section style={styles.section}>
+              <h2 style={styles.h2}>Largest expenses this month</h2>
+              <div style={styles.table}>
+                {dash.largest.map(e => (
+                  <div key={e.id} style={styles.tableRow}>
+                    <span style={styles.tableDate}>{e.date.slice(5)}</span>
+                    <span style={styles.tableShop}>{e.shop}</span>
+                    <span style={styles.tableCat}>{e.category}</span>
+                    <span style={{ ...styles.mono, ...styles.tableAmt }}>{fmt(e.amount)}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section style={styles.section}>
+              <h2 style={styles.h2}><Sparkles size={16} style={styles.h2icon} />What the numbers say</h2>
+              <div style={styles.insightList}>
+                {insights.map((ins, i) => (
+                  <div key={i} style={styles.insightCard}>
+                    <IconFor kind={ins.icon} />
+                    <span>{ins.text}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        )}
+
+        {tab === "add" && (
+          <div>
+            <section style={styles.section}>
+              <h2 style={styles.h2}><Upload size={16} style={styles.h2icon} />From a photo</h2>
+              <p style={styles.hint}>Photograph the bill and the amount, date and shop are read off it. Anything the reader is unsure about is left blank and flagged, so check every field before saving.</p>
+              <input ref={fileRef} type="file" accept="image/*" onChange={handlePhoto} style={styles.fileInput} />
+
+              {ocrState === "loading" && (
+                <div style={styles.ocrPanel}><Loader2 className="spin" size={18} /><span>Reading the receipt…</span></div>
+              )}
+              {ocrState === "error" && (
+                <div style={{ ...styles.ocrPanel, color: "#A6432E" }}>
+                  <AlertTriangle size={18} />
+                  <span>That image couldn't be read. Try a sharper photo, or type it in below.</span>
+                  <button onClick={cancelOcr} style={styles.linkBtn}>Dismiss</button>
+                </div>
+              )}
+              {ocrState === "review" && ocrDraft && (
+                <div style={styles.ocrReview}>
+                  <div style={styles.ocrReviewHead}>
+                    <span>Check what was read</span>
+                    <button onClick={cancelOcr} style={styles.iconBtn} aria-label="Discard"><X size={16} /></button>
+                  </div>
+                  <div style={styles.ocrFields}>
+                    <OcrField label="Amount (BDT)" confidence={ocrDraft.confidence.amount}>
+                      <input type="number" value={ocrDraft.amount} onChange={e => setOcrDraft({ ...ocrDraft, amount: e.target.value })} style={styles.input} placeholder="Type the amount" />
+                    </OcrField>
+                    <OcrField label="Date" confidence={ocrDraft.confidence.date}>
+                      <input type="date" value={ocrDraft.date} onChange={e => setOcrDraft({ ...ocrDraft, date: e.target.value })} style={styles.input} />
+                    </OcrField>
+                    <OcrField label="Shop" confidence={ocrDraft.confidence.shop}>
+                      <input type="text" value={ocrDraft.shop} onChange={e => setOcrDraft({ ...ocrDraft, shop: e.target.value })} style={styles.input} placeholder="Type the shop name" />
+                    </OcrField>
+                    <OcrField label="Category" confidence="high">
+                      <select value={ocrDraft.category} onChange={e => setOcrDraft({ ...ocrDraft, category: e.target.value })} style={styles.input}>
+                        {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </OcrField>
+                  </div>
+                  <button onClick={saveOcrExpense} style={styles.primaryBtn} disabled={!ocrDraft.shop || !ocrDraft.amount || !ocrDraft.date}>Save expense</button>
+                  {(!ocrDraft.shop || !ocrDraft.amount || !ocrDraft.date) && <span style={styles.blockedNote}>Fill the flagged fields to save.</span>}
+                </div>
+              )}
+            </section>
+
+            <section style={styles.section}>
+              <h2 style={styles.h2}><Receipt size={16} style={styles.h2icon} />By hand</h2>
+              <form onSubmit={addExpense} style={styles.manualForm}>
+                <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} style={styles.input} />
+                <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} style={styles.input}>
+                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <input type="text" placeholder="Shop name" value={form.shop} onChange={e => setForm({ ...form, shop: e.target.value })} style={styles.input} />
+                <input type="number" placeholder="Amount" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} style={styles.input} />
+                <button type="submit" style={styles.primaryBtn}>Add</button>
+              </form>
+            </section>
+
+            <section style={styles.section}>
+              <h2 style={styles.h2}>This month's entries</h2>
+              <div style={styles.table}>
+                {[...dash.thisM].sort((a, b) => b.date.localeCompare(a.date)).map(e => (
+                  <div key={e.id} style={styles.tableRow}>
+                    <span style={styles.tableDate}>{e.date.slice(5)}</span>
+                    <span style={styles.tableShop}>{e.shop}{recurringIds.has(e.id) && <span style={styles.recurBadge}>recurring</span>}</span>
+                    <span style={styles.tableCat}>{e.category}</span>
+                    <span style={{ ...styles.mono, ...styles.tableAmt }}>{fmt(e.amount)}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        )}
+
+        {tab === "pockets" && (
+          <div>
+            <section style={styles.section}>
+              <h2 style={styles.h2}>What if</h2>
+              <p style={styles.hint}>Cut one category for the rest of the month and every completion date moves with it. The cut applies to variable spending only, since bills already paid this month can't be un-paid.</p>
+              <div style={styles.whatIfRow}>
+                <select value={whatIfCat} onChange={e => setWhatIfCat(e.target.value)} style={{ ...styles.input, maxWidth: 220 }}>
+                  <option value="">Choose a category</option>
+                  {forecast.perCat.map(c => <option key={c.cat} value={c.cat}>{c.cat}</option>)}
+                </select>
+                <input type="range" min="0" max="50" value={whatIfPct} onChange={e => setWhatIfPct(Number(e.target.value))} disabled={!whatIfCat} style={{ flex: 1 }} />
+                <span style={styles.mono}>{whatIfPct}%</span>
+              </div>
+              {hasWhatIf && (
+                <p style={styles.whatIfNote}>
+                  {whatIfCat} cut by {whatIfPct}% for the remaining {forecast.remaining} days. Projected surplus is now <b style={styles.mono}>{fmt(forecast.monthlySurplus)}</b> a month.
+                </p>
+              )}
+            </section>
+
+            <section style={styles.section}>
+              <h2 style={styles.h2}><PiggyBank size={16} style={styles.h2icon} />Pockets</h2>
+              <p style={styles.hint}>
+                DPS rate {dpsRate.toFixed(2)}% a year. Each month the contribution goes in first, then interest of balance × {dpsRate.toFixed(2)} ÷ 12 ÷ 100 is rounded half up to the paisa and added to the balance, so later months earn on it too. Dates come from the forecast surplus split across the pockets still open, never from target ÷ contribution.
+              </p>
+              <div style={styles.pocketGrid}>
+                {pockets.map((p, i) => {
+                  const row = sim.rows[i];
+                  const done = row && row.months;
+                  return (
+                    <div key={p.id} style={styles.pocketCard}>
+                      <div style={styles.pocketHead}>
+                        <div>
+                          <div style={styles.pocketName}>{p.name}</div>
+                          <div style={styles.pocketItem}>{p.item}</div>
+                        </div>
+                        <button onClick={() => removePocket(p.id)} style={styles.iconBtn} aria-label={"Remove " + p.name}><Trash2 size={15} /></button>
+                      </div>
+
+                      <div style={styles.pocketTarget}>
+                        <label style={styles.fieldLabel}>Target</label>
+                        <div style={styles.inlineField}>
+                          <span style={styles.takaSmall}>৳</span>
+                          <input type="number" min="0" step="1000" value={p.target} onChange={e => updatePocket(p.id, { target: Math.max(0, Number(e.target.value)) })} style={{ ...styles.input, ...styles.monoInput }} />
+                        </div>
+                      </div>
+
+                      <div style={styles.pocketRow}>
+                        <label style={styles.fieldLabel}>Monthly contribution</label>
+                        <div style={styles.contribRow}>
+                          <input type="range" min="500" max={Math.max(1000, Math.round(p.target))} step="500" value={p.contribution} onChange={e => updatePocket(p.id, { contribution: Number(e.target.value) })} style={{ flex: 1 }} />
+                          <span style={styles.mono}>{fmt(p.contribution)}</span>
+                        </div>
+                      </div>
+
+                      <div style={styles.pocketFundNote}>
+                        {sim.firstRatio >= 1 ? "Funded in full every month" : "Funded at about " + Math.round(sim.firstRatio * 100) + "% of contribution by the forecast surplus"}
+                      </div>
+
+                      {done ? (
+                        <>
+                          <div style={styles.pocketStats}>
+                            <div>
+                              <div style={styles.pocketStatLabel}>Expected completion</div>
+                              <div style={styles.pocketStatValue}>{fmtDate(addMonths(today, row.months))}</div>
+                            </div>
+                            <div style={{ textAlign: "right" }}>
+                              <div style={styles.pocketStatLabel}>Months away</div>
+                              <div style={styles.pocketStatValue}>{row.months}</div>
+                            </div>
+                          </div>
+                          <div style={styles.dpsBox}>
+                            <div style={styles.dpsRow}><span>Paid in</span><span style={styles.mono}>{fmt2(row.contributed)}</span></div>
+                            <div style={styles.dpsRow}><span>DPS interest</span><span style={styles.mono}>{fmt2(row.interestEarned)}</span></div>
+                            <div style={{ ...styles.dpsRow, fontWeight: 700, borderTop: "1px solid #EFE9DA", paddingTop: 4 }}><span>Payout</span><span style={styles.mono}>{fmt2(row.balance)}</span></div>
+                          </div>
+                        </>
+                      ) : (
+                        <div style={styles.unreachable}>
+                          <AlertTriangle size={14} />
+                          <span>
+                            {forecast.monthlySurplus <= 0
+                              ? "No date yet. This month is forecast to run out before any money reaches the pockets \u2014 spending needs to fall by " + fmt(totalDesired - forecast.monthlySurplus) + " a month to fund all contributions."
+                              : "No date within 40 years at this surplus. Raise the surplus or lower the target."}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section style={styles.section}>
+              <h2 style={styles.h2}><Plus size={16} style={styles.h2icon} />New pocket</h2>
+              <form onSubmit={addPocket} style={styles.pocketForm}>
+                <input type="text" placeholder="Name, e.g. Laptop" value={newPocket.name} onChange={e => setNewPocket({ ...newPocket, name: e.target.value })} style={styles.input} />
+                <input type="text" placeholder="What exactly, e.g. MacBook Air M4" value={newPocket.item} onChange={e => setNewPocket({ ...newPocket, item: e.target.value })} style={styles.input} />
+                <input type="number" placeholder="Target" value={newPocket.target} onChange={e => setNewPocket({ ...newPocket, target: e.target.value })} style={styles.input} />
+                <input type="number" placeholder="Per month" value={newPocket.contribution} onChange={e => setNewPocket({ ...newPocket, contribution: e.target.value })} style={styles.input} />
+                <button type="submit" style={styles.primaryBtn}>Create</button>
+              </form>
+            </section>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
+function StatCard({ label, value, sub, tone, icon }) {
+  return (
+    <div style={{ ...styles.statCard, borderLeftColor: toneColor(tone) }}>
+      <div style={styles.statLabel}>{label}</div>
+      <div style={{ ...styles.statValue, color: toneColor(tone) }}>
+        {icon === "up" && <TrendingUp size={16} style={styles.statIcon} />}
+        {icon === "down" && <TrendingDown size={16} style={styles.statIcon} />}
+        {value}
+      </div>
+      <div style={styles.statSub}>{sub}</div>
+    </div>
+  );
+}
+
+function OcrField({ label, confidence, children }) {
+  const low = confidence === "low";
+  return (
+    <div>
+      <div style={styles.ocrFieldLabel}>
+        <span>{label}</span>
+        <span style={{ ...styles.confBadge, ...(low ? styles.confLow : styles.confHigh) }}>
+          {low ? <AlertTriangle size={11} /> : <CheckCircle2 size={11} />}
+          {low ? "check this" : "looks right"}
+        </span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function IconFor({ kind }) {
+  const map = {
+    up: <TrendingUp size={16} color="#A6432E" />,
+    top: <Sparkles size={16} color="#C79A3E" />,
+    cal: <Calendar size={16} color="#1F5C55" />,
+    recur: <Calendar size={16} color="#1F5C55" />,
+    warn: <AlertTriangle size={16} color="#A6432E" />,
+    ok: <CheckCircle2 size={16} color="#1F5C55" />,
+    pocket: <PiggyBank size={16} color="#C79A3E" />,
+  };
+  return <span style={styles.insightIcon}>{map[kind] || <Sparkles size={16} />}</span>;
+}
+
+function toneColor(tone) {
+  return { ink: "#1B2A2E", gold: "#8A6A1E", warn: "#A6432E" }[tone] || "#1B2A2E";
+}
+
+const css = "@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap');.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}@media (prefers-reduced-motion:reduce){.spin{animation:none}}";
+
+const styles = {
+  app: { fontFamily: "'Inter', sans-serif", background: "#F6F1E7", color: "#2A2420", minHeight: "100%", paddingBottom: 48 },
+  header: { background: "#1B2A2E", color: "#F6F1E7", padding: "24px 24px 0" },
+  headerTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16 },
+  eyebrow: { fontSize: 11, letterSpacing: 2, color: "#C79A3E", fontWeight: 600, marginBottom: 4 },
+  title: { fontFamily: "'Source Serif 4', serif", fontSize: 26, margin: 0, fontWeight: 700 },
+  caseSelect: { display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" },
+  caseLabel: { fontSize: 11, color: "#B9C2BE" },
+  select: { background: "#243A3F", color: "#F6F1E7", border: "1px solid #3A5257", borderRadius: 6, padding: "6px 8px", fontSize: 13, minWidth: 190 },
+  ghostBtn: { display: "inline-flex", alignItems: "center", gap: 5, background: "transparent", color: "#C79A3E", border: "1px solid #3A5257", borderRadius: 6, padding: "5px 9px", fontSize: 12, cursor: "pointer" },
+  headerMeta: { display: "flex", gap: 10, alignItems: "center", fontSize: 13, color: "#C9D2CE", marginTop: 14, flexWrap: "wrap" },
+  salaryWrap: { display: "inline-flex", alignItems: "center", gap: 6 },
+  taka: { color: "#C79A3E", fontFamily: "'IBM Plex Mono', monospace" },
+  salaryInput: { width: 110, background: "#243A3F", color: "#F6F1E7", border: "1px solid #3A5257", borderRadius: 6, padding: "5px 8px", fontSize: 13, fontFamily: "'IBM Plex Mono', monospace" },
+  dot: { color: "#4C6B67" },
+  loadNote: { marginTop: 10, fontSize: 12.5, color: "#C79A3E" },
+  mono: { fontFamily: "'IBM Plex Mono', monospace" },
+  monoInput: { fontFamily: "'IBM Plex Mono', monospace" },
+  tabs: { display: "flex", gap: 4, marginTop: 20, flexWrap: "wrap" },
+  tabBtn: { background: "transparent", border: "none", color: "#9FB0AC", padding: "10px 16px", fontSize: 14, cursor: "pointer", fontWeight: 500, borderBottom: "2px solid transparent" },
+  tabBtnActive: { color: "#F6F1E7", borderBottom: "2px solid #C79A3E" },
+  perforation: { borderBottom: "2px dashed #3A5257", marginTop: 4 },
+  main: { maxWidth: 920, margin: "0 auto", padding: "24px 20px" },
+  cardGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 },
+  statCard: { background: "#FFFDF8", border: "1px solid #E4DCC7", borderLeft: "4px solid #1B2A2E", borderRadius: 8, padding: "14px 16px" },
+  statLabel: { fontSize: 12, color: "#7A6F5E", marginBottom: 6 },
+  statValue: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 20, fontWeight: 600 },
+  statIcon: { marginRight: 4, verticalAlign: -2 },
+  statSub: { fontSize: 12, color: "#8A7F6C", marginTop: 4 },
+  section: { marginTop: 32 },
+  h2: { fontFamily: "'Source Serif 4', serif", fontSize: 18, fontWeight: 700, marginBottom: 10, color: "#1B2A2E" },
+  h2icon: { marginRight: 6, verticalAlign: -3 },
+  hint: { fontSize: 13, color: "#7A6F5E", marginBottom: 12, lineHeight: 1.55 },
+  catList: { display: "flex", flexDirection: "column", gap: 12 },
+  catRowTop: { display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 },
+  catName: { fontWeight: 500 },
+  recurBadge: { fontSize: 10, background: "#E4DCC7", color: "#5C5340", borderRadius: 4, padding: "1px 6px", marginLeft: 6, fontWeight: 500 },
+  barTrack: { height: 8, background: "#EDE6D5", borderRadius: 4, overflow: "hidden" },
+  barFill: { height: "100%", background: "linear-gradient(90deg,#1F5C55,#2F7A6E)" },
+  table: { display: "flex", flexDirection: "column", border: "1px solid #E4DCC7", borderRadius: 8, overflow: "hidden", background: "#FFFDF8" },
+  tableRow: { display: "grid", gridTemplateColumns: "52px 1fr 110px 100px", gap: 8, padding: "9px 12px", fontSize: 13, borderBottom: "1px solid #EFE9DA", alignItems: "center" },
+  tableDate: { color: "#8A7F6C" },
+  tableShop: { fontWeight: 500 },
+  tableCat: { color: "#7A6F5E", fontSize: 12 },
+  tableAmt: { textAlign: "right" },
+  insightList: { display: "flex", flexDirection: "column", gap: 10 },
+  insightCard: { display: "flex", gap: 10, alignItems: "flex-start", background: "#FFFDF8", border: "1px solid #E4DCC7", borderRadius: 8, padding: "12px 14px", fontSize: 13.5, lineHeight: 1.55 },
+  insightIcon: { flexShrink: 0, marginTop: 2 },
+  fileInput: { fontSize: 13, marginBottom: 12 },
+  ocrPanel: { display: "flex", alignItems: "center", gap: 8, background: "#FFFDF8", border: "1px solid #E4DCC7", borderRadius: 8, padding: 14, fontSize: 13 },
+  ocrReview: { background: "#FFFDF8", border: "1px solid #E4DCC7", borderRadius: 8, padding: 16 },
+  ocrReviewHead: { display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, fontWeight: 600, marginBottom: 12 },
+  iconBtn: { background: "transparent", border: "none", cursor: "pointer", color: "#7A6F5E", padding: 2 },
+  ocrFields: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px,1fr))", gap: 12, marginBottom: 14 },
+  ocrFieldLabel: { display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, color: "#7A6F5E", marginBottom: 4, gap: 6 },
+  confBadge: { display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10, borderRadius: 4, padding: "1px 6px", fontWeight: 600 },
+  confHigh: { background: "#DCE9E3", color: "#1F5C55" },
+  confLow: { background: "#F3DAD3", color: "#A6432E" },
+  blockedNote: { fontSize: 12, color: "#A6432E", marginLeft: 10 },
+  input: { width: "100%", boxSizing: "border-box", border: "1px solid #D8CDB8", borderRadius: 6, padding: "8px 10px", fontSize: 13.5, background: "#FCFAF3", fontFamily: "'Inter', sans-serif", color: "#2A2420" },
+  manualForm: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 8, alignItems: "center" },
+  pocketForm: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8, alignItems: "center" },
+  primaryBtn: { background: "#1F5C55", color: "#F6F1E7", border: "none", borderRadius: 6, padding: "9px 14px", fontSize: 13.5, fontWeight: 600, cursor: "pointer" },
+  linkBtn: { background: "transparent", border: "none", color: "#1F5C55", textDecoration: "underline", cursor: "pointer", fontSize: 13 },
+  whatIfRow: { display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" },
+  whatIfNote: { fontSize: 13, marginTop: 10, background: "#FFFDF8", border: "1px solid #E4DCC7", borderRadius: 8, padding: 10, lineHeight: 1.5 },
+  pocketGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(272px,1fr))", gap: 14 },
+  pocketCard: { background: "#FFFDF8", border: "1px solid #E4DCC7", borderRadius: 10, padding: 16 },
+  pocketHead: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 },
+  pocketName: { fontFamily: "'Source Serif 4', serif", fontWeight: 700, fontSize: 16 },
+  pocketItem: { fontSize: 12, color: "#7A6F5E" },
+  pocketTarget: { marginBottom: 10 },
+  fieldLabel: { fontSize: 11.5, color: "#7A6F5E", display: "block", marginBottom: 4 },
+  inlineField: { display: "flex", alignItems: "center", gap: 6 },
+  takaSmall: { color: "#8A6A1E", fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 },
+  pocketRow: { marginBottom: 8 },
+  contribRow: { display: "flex", gap: 10, alignItems: "center" },
+  pocketFundNote: { fontSize: 11.5, color: "#8A6A1E", marginBottom: 12 },
+  pocketStats: { display: "flex", justifyContent: "space-between", marginBottom: 12, borderTop: "1px dashed #E4DCC7", borderBottom: "1px dashed #E4DCC7", padding: "10px 0", gap: 10 },
+  pocketStatLabel: { fontSize: 11, color: "#7A6F5E" },
+  pocketStatValue: { fontSize: 14, fontWeight: 600 },
+  dpsBox: { display: "flex", flexDirection: "column", gap: 4, fontSize: 12.5 },
+  dpsRow: { display: "flex", justifyContent: "space-between", gap: 10 },
+  unreachable: { display: "flex", gap: 8, alignItems: "flex-start", background: "#FBF0EC", border: "1px solid #EBCFC6", borderRadius: 8, padding: "10px 12px", fontSize: 12.5, color: "#8A3B29", lineHeight: 1.5, marginTop: 4 },
+};
