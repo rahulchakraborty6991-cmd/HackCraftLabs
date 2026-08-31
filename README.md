@@ -2,7 +2,7 @@
 
 **Team ID:** LSH26-T029
 **Problem ID:** P12 — Personal Ledger Manager
-**Live URL:** ⟨FILL IN — deployment URL once published⟩
+**Live URL:** https://github.com/rahulchakraborty6991-cmd/lsh26-t029-p12
 
 A single React component (`personal-ledger.jsx`). A salaried person in
 Dhaka sets their monthly salary, records spending with as little typing as
